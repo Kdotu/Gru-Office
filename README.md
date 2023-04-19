@@ -23,6 +23,36 @@ Notion Link : https://www.notion.so/Final-Project-c85bf747e8f649f4ae2e4266ea2a04
 `2023-02-02` ~`2022-04-14` :  총 71일
 
 
+
+## 개발환경
+- Platforms & Languages
+<br />
+<div align="left">
+  <img src="https://img.shields.io/badge/Java-007396?style=flat&logo=Java&logoColor=white" />
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=HTML5&logoColor=white" />
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=CSS3&logoColor=white" />
+  <img src="https://img.shields.io/badge/Oracle SQL-F80000?style=flat&logo=Oracle&logoColor=white">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=JavaScript&logoColor=white">
+  <img src="https://img.shields.io/badge/Jquery-0769AD?style=flat&logo=Jquery&logoColor=white">  
+  <img src="https://img.shields.io/badge/Bootstrap-7952B3?style=flat&logo=Bootstrap&logoColor=white">    
+  <img src="https://img.shields.io/badge/Spring-6DB33F?style=flat&logo=Spring&logoColor=white">      
+</div>
+<br />
+
+- Tools
+<div align="left">
+  <img src="https://img.shields.io/badge/Eclipse IDE-2C2255?style=flat&logo=Eclipse&logoColor=white" />
+  <img src="https://img.shields.io/badge/apachetomcat-F8DC75?style=flat&logo=apachetomcat&logoColor=white" />
+  <img src="https://img.shields.io/badge/json-000000?style=flat&logo=json&logoColor=white">  
+  <img src="https://img.shields.io/badge/SVN-010101?style=flat&logo=SVN&logoColor=white" />
+  <img src="https://img.shields.io/badge/mybatis-000000?style=flat&logo=mybatis&logoColor=white">  
+</div>
+<br />
+
+
+
+
+
 ## 시스템 메인 화면
 - 일반사원
 ![그루오피스  00 메인페이지 JPG](https://user-images.githubusercontent.com/110898315/232223987-fe9301cb-ad72-4353-9a88-dc7c27ab5bb9.jpg)
