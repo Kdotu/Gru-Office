@@ -3,7 +3,7 @@
 Notion Link : https://www.notion.so/Final-Project-c85bf747e8f649f4ae2e4266ea2a043f?pvs=4
 ## ✉️PROJECT CONCEPT
 
-‘**그루오피스’**는 원활한 정보 공유를 위한 
+‘그루오피스’는 원활한 정보 공유를 위한 
 그룹웨어 시스템입니다. 
 
 효율적인 업무 처리와 일정 조율을 위한 
