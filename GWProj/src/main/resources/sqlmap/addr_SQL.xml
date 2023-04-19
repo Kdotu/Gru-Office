@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.AddressMapper">
+
+	<sql id="where">
+	  <!-- 검색 -->
+	  <if test="keyword!=null and keyword!=''
+	  	        and searchType != null and searchType == 'addrNm'"
+	  	        >
+		    	   	AND(
+		    			ADDR_NM LIKE '%' || #{keyword} || '%'
+		    		)
+	  </if>
+	  <if test="keyword!=null and keyword!=''
+	  	        and searchType != null and searchType == 'addrRank'">
+		    	   	AND(
+		    			ADDR_RANK LIKE '%' || #{keyword} || '%'
+		    		)
+	  </if>
+	  <if test="keyword!=null and keyword!=''
+	  	        and searchType != null and searchType == 'addrCoNm'">
+		    	   	AND(
+		    			ADDR_CO_NM LIKE '%' || #{keyword} || '%'
+		    		)
+	  </if>
+	</sql>
+
+	<sql id="where2">
+	<!-- 검색 -->
+	<if test="keyword!=null and keyword!=''
+		        and searchType != null and searchType == 'addrNm'"
+		        >
+	    	   	AND(
+	    			ADDR_NM LIKE '%' || #{keyword} || '%'
+	    		)
+	</if>
+	<if test="keyword!=null and keyword!=''
+		        and searchType != null and searchType == 'addrRank'">
+	    	   	AND(
+	    			ADDR_RANK LIKE '%' || #{keyword} || '%'
+	    		)
+	</if>
+	</sql>
+
+
+	<!-- 전체행의 수 -->
+	 <select id="getTotal" parameterType="hashmap" resultType="int">
+	 	SELECT COUNT(*) FROM ADDR
+	 	WHERE 1 = 1 AND EMP_NO=#{username}
+	 	 <include refid="where"></include>
+	 </select>
+
+
+
+
+	<!-- 주소록 목록 -->
+	<select id="getAllAddrList" parameterType="hashMap" resultType="addrVO">
+		WITH U AS(
+		SELECT ROW_NUMBER() OVER (ORDER BY ADDR_NO DESC) RNUM
+		    ,T.*
+		FROM
+		(
+		    SELECT ADDR_NO, EMP_NO, ADDR_NM, EML_ADDR, ADDR_HP, ADDR_CO_NM
+		    		,  ADDR_RANK, ADDR_DEPT, ADDR_CO_TELNO
+		    FROM   ADDR
+		    WHERE 1 = 1
+		    AND EMP_NO=#{username}
+		    <include refid="where"></include>		    
+		) T
+		)
+		SELECT U.*
+		FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage}*#{size})-(#{size}-1)
+					AND (#{currentPage}*#{size})
+	</select>
+
+
+	<!-- 주소록 상세보기 -->
+	<select id="detail" parameterType="addrVO" resultType="addrVO">
+		SELECT ADDR_NO, EMP_NO, ADDR_NM, EML_ADDR, ADDR_HP, ADDR_CO_NM, ADDR_RANK, ADDR_DEPT, ADDR_CO_TELNO
+				,POST_NO, CUS_ADDR, ADDR_DET
+		FROM ADDR
+		WHERE ADDR_NO = #{addrNo}
+	</select>
+
+	<!-- 주소록 추가 -->
+	<insert id="createPost" parameterType="addrVO">
+		<selectKey resultType="int" order="AFTER" keyProperty="addrNo">
+			SELECT NVL(MAX(ADDR_NO),0)+1 FROM ADDR
+		</selectKey>
+		  MERGE INTO ADDR A
+	      USING DUAL
+	      ON(A.ADDR_NO = #{addrNo})
+	      WHEN MATCHED THEN
+	          UPDATE SET ADDR_NM = #{addrNm}, ADDR_CO_NM=#{addrCoNm},
+	                     ADDR_DEPT = #{addrDept}, ADDR_RANK=#{addrRank}, EML_ADDR=#{emlAddr},
+	                     ADDR_HP =#{addrHp}, ADDR_CO_TELNO =#{addrCoTelno}
+	                     <if test="postno!=null and postno!=''">
+	                     , POST_NO =#{postno}
+	                     </if>
+	                     <if test="cusAddr!=null and cusAddr!=''">
+	                     , CUS_ADDR =#{cusAddr}
+	                     </if>
+	                     <if test="addrDet!=null and addrDet!=''">
+	                     , ADDR_DET =#{addrDet}
+	                     </if>
+	      WHEN NOT MATCHED THEN
+	          INSERT (ADDR_NO, EMP_NO, ADDR_NM, EML_ADDR, ADDR_HP
+						, ADDR_CO_NM
+						 <if test="postno!=null and postno!=''">
+	                     , POST_NO
+	                     </if>
+	                     <if test="cusAddr!=null and cusAddr!=''">
+	                     , CUS_ADDR
+	                     </if>
+	                     <if test="addrDet!=null and addrDet!=''">
+	                     , ADDR_DET
+	                     </if>
+						, ADDR_RANK, ADDR_DEPT, ADDR_CO_TELNO)
+			  VALUES ((SELECT NVL(MAX(ADDR_NO),0)+1 FROM ADDR), #{empNo}, #{addrNm}, #{emlAddr}, #{addrHp}
+						, #{addrCoNm}
+						 <if test="postno!=null and postno!=''">
+	                     , #{postno}
+	                     </if>
+	                     <if test="cusAddr!=null and cusAddr!=''">
+	                     , #{cusAddr}
+	                     </if>
+	                     <if test="addrDet!=null and addrDet!=''">
+	                     , #{addrDet}
+	                     </if>
+						, #{addrRank}, #{addrDept}, #{addrCoTelno})
+
+	</insert>
+
+	<!-- 주소록 삭제(1건) -->
+	<delete id="deletePost" parameterType="addrVO">
+		DELETE
+		FROM ADDR
+		WHERE ADDR_NO=#{addrNo}
+	</delete>
+
+
+	<!-- 주소록 삭제(다중) -->
+	<delete id="deleteMulti" parameterType="addrVO">
+		<!-- WHERE 1<>1 거짓이니까 삭제안됨. -->
+		DELETE
+		FROM ADDR
+		<![CDATA[
+		WHERE 1<>1
+		]]>
+		<choose>
+			<when test="addrNoArray.length>0">
+				OR ADDR_NO IN
+				<foreach collection="addrNoArray" item="addr" separator="," open="(" close=")">
+					#{addr}
+				</foreach>
+			</when>
+		</choose>
+	</delete>
+
+
+	<!-- 즐겨찾기 주소록에 추가(다중) -->
+	<!--
+	insertAll 명령을 사용해서 여러개의 행을 한꺼번에 추가할 때 시퀀스 번호가 증가하지 않는 문제가 발생하는데
+	이것을 해결하기 위해서 아래와 같이 함수를 만들고 쿼리문에 이 함수를 호출해서 해결함...
+
+		** BOOKBARK_NO의 시퀀스를 구하는 함수  **
+		create or replace
+		FUNCTION GET_BOOKMARK_NO RETURN NUMBER AS
+		num NUMBER;
+		BEGIN
+		  SELECT SEQ_BOOKMARK_NO.nextval
+		  INTO num
+		  FROM dual;
+		  return num;
+		END GET_BOOKMARK_NO;
+		******************************************
+	 -->
+	 <insert id="sendBookMark" parameterType="bookmarkVO">
+        <foreach collection="addrNoArray" item="item" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" ">
+			INTO BOOKMARK(EMP_NO,BOOKMARK_NO,ADDR_NO) VALUES (#{empNo}, GET_BOOKMARK_NO() , #{item})
+		</foreach>
+	 </insert>
+
+	<!-- 즐겨찾기 목록  -->
+	<!-- 즐겨찾기 주소록 삭제를 위해서 addrVO에  bookmarkNo 넣어주고 inner join해줌.(bookmarkNo로 삭제해야하니까)-->
+	<select id="bookMarkList" parameterType="addrVO" resultType="addrVO">
+		SELECT A.ADDR_NO, A.EMP_NO, A.ADDR_NM, A.EML_ADDR, A.ADDR_HP, A.ADDR_CO_NM, A.ADDR_RANK, A.ADDR_DEPT, A.ADDR_CO_TELNO,
+		       B.BOOKMARK_NO
+		  FROM ADDR A INNER JOIN BOOKMARK B ON(B.ADDR_NO=A.ADDR_NO)
+		 WHERE A.ADDR_NO
+			    IN
+			    (  SELECT ADDR_NO
+			        FROM BOOKMARK
+			        WHERE EMP_NO= #{empNo})
+		 ORDER BY A.ADDR_NO DESC
+	</select>
+
+	<!-- /** 즐겨찾기 주소록 삭제
+	 * @param bookmarkVO
+	 * @return int값
+	 */
+	public int bookmarkDel(BookmarkVO bookmarkVO); -->
+	<delete id="bookmarkDel" parameterType="bookmarkVO">
+
+		DELETE
+		FROM BOOKMARK
+		<where>
+			<choose>
+				<when test="addrNoArray.length>0">
+					AND ADDR_NO IN
+					<foreach collection="addrNoArray" item="addr" separator="," open="(" close=")">
+						#{addr}
+					</foreach>
+				</when>
+			</choose>
+			AND EMP_NO=#{empNo}
+		</where>
+	</delete>
+
+	<!-- 주소록 목록(메일쓰기에서 사용) -->
+
+	<select id="addrList" parameterType="hashMap" resultType="addrVO">
+		SELECT ROW_NUMBER() OVER (ORDER BY ADDR_NM) RNUM
+		    ,T.*
+		FROM
+		(
+		    SELECT ADDR_NO, EMP_NO, ADDR_NM, EML_ADDR, ADDR_HP, ADDR_CO_NM
+		    		, ADDR_RANK, ADDR_DEPT, ADDR_CO_TELNO
+		    FROM   ADDR
+		    WHERE 1 = 1
+		    AND EMP_NO = #{username}
+		    <include refid="where2"></include>
+		) T
+	</select>
+
+	<!-- 이메일주소 가져오는 함수 -->
+	<!-- WHERE ADDR_NO=#{addrNo} -->
+	<select id="checkAddr" parameterType="addrVO" resultType="addrVO">
+		SELECT ADDR_NO, EMP_NO, ADDR_NM, EML_ADDR, ADDR_HP, ADDR_CO_NM, ADDR_RANK, ADDR_DEPT, ADDR_CO_TELNO
+		FROM ADDR
+		WHERE ADDR_NO IN
+		 <foreach item="item" index="index" collection="addrNoArray"  open="(" separator="," close=")">
+        	#{item}
+  		</foreach>
+	</select>
+
+	<!-- 내메일주소 받아오기(메일쓰기에서 사용) -->
+	<select id="getMyEmail" parameterType="addrVO" resultType="String">
+		SELECT DISTINCT(B.EMP_EML_ADDR)
+		FROM EMP B, EML A
+		WHERE B.EMP_NO = A.EMP_NO
+			AND B.EMP_NO=#{empNo}
+	</select>
+
+	<!-- 주소록 수정 -->
+	<update id="updatePost" parameterType="addrVO">
+		 UPDATE ADDR SET ADDR_NM = #{addrNm}, ADDR_CO_NM=#{addrCoNm},
+		                     ADDR_DEPT = #{addrDept}, ADDR_RANK=#{addrRank}, EML_ADDR=#{emlAddr},
+		                     ADDR_HP =#{addrHp}, ADDR_CO_TELNO =#{addrCoTelno}
+		                     <if test="postno!=null and postno!=''">
+		                     , POST_NO =#{postno}
+		                     </if>
+		                     <if test="cusAddr!=null and cusAddr!=''">
+		                     , CUS_ADDR =#{cusAddr}
+		                     </if>
+		                     <if test="addrDet!=null and addrDet!=''">
+		                     , ADDR_DET =#{addrDet}
+		                     </if>
+		WHERE ADDR_NO=#{addrNo}		                     
+
+	</update>
+
+
+
+
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

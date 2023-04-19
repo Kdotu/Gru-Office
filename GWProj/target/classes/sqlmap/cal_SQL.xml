@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.CalMapper">
+
+	<select id="getCal" parameterType="calVO" resultType="calVO">
+		SELECT C.CAL_NO AS CAL_NO,
+		       C.EMP_NO AS EMP_NO,
+		       E.EMP_NM AS EMP_NM,
+		       C.CAL_TTL AS CAL_TTL,
+		       C.CAL_CN AS CAL_CN,
+		       C.CAL_TYPE AS CAL_TYPE,
+		       TO_CHAR(C.CAL_BGNG_DT, 'YYYY-MM-DD"T"HH24:MI:SS') CAL_BGNG_DT,
+		       TO_CHAR(C.CAL_END_DT, 'YYYY-MM-DD"T"HH24:MI:SS') CAL_END_DT,
+		       C.CAL_PLC AS CAL_PLC,
+		       C.CAL_COL AS CAL_COL,
+		       C.CAL_COL_TXT AS CAL_COL_TXT,
+		       C.CAL_OPEN_YN AS CAL_OPEN_YN,
+		       C.CAL_ALL_YN AS CAL_ALL_YN
+		  FROM CAL C
+		  JOIN EMP E ON C.EMP_NO = E.EMP_NO
+		 WHERE C.EMP_NO IN (#{empNo}, 202300)
+	</select>
+	
+	<select id="getCalAnother" parameterType="calVO" resultType="calVO">
+		SELECT C.CAL_NO AS CAL_NO,
+		       C.EMP_NO AS EMP_NO,
+		       E.EMP_NM AS EMP_NM,
+		       C.CAL_TTL AS CAL_TTL,
+		       C.CAL_CN AS CAL_CN,
+		       C.CAL_TYPE AS CAL_TYPE,
+		       TO_CHAR(C.CAL_BGNG_DT, 'YYYY-MM-DD"T"HH24:MI:SS') CAL_BGNG_DT,
+		       TO_CHAR(C.CAL_END_DT, 'YYYY-MM-DD"T"HH24:MI:SS') CAL_END_DT,
+		       C.CAL_PLC AS CAL_PLC,
+		       C.CAL_COL AS CAL_COL,
+		       C.CAL_COL_TXT AS CAL_COL_TXT,
+		       C.CAL_OPEN_YN AS CAL_OPEN_YN,
+		       C.CAL_ALL_YN AS CAL_ALL_YN
+		  FROM CAL C
+		  JOIN EMP E ON C.EMP_NO = E.EMP_NO
+		 WHERE C.EMP_NO IN (#{empNo}, 202300) AND C.CAL_OPEN_YN = 'true'
+	</select>
+
+	<insert id="createCalender" parameterType="calVO">
+		<selectKey resultType="String" order="BEFORE" keyProperty="calNo">
+			(SELECT NVL(SUBSTR(MAX(CAL_NO),1,2), 'CL') 
+	        || TO_CHAR(NVL(SUBSTR(MAX(CAL_NO),3), '1000') + 1)
+	        FROM CAL)
+		</selectKey>
+		INSERT INTO CAL 
+		(
+		    CAL_NO,
+		    EMP_NO,
+		    CAL_TTL,
+		    CAL_CN,
+		    CAL_TYPE,
+		    CAL_BGNG_DT,
+		    CAL_END_DT,
+		    CAL_PLC,
+		    CAL_COL,
+		    CAL_COL_TXT,
+		    CAL_OPEN_YN,
+		    CAL_ALL_YN
+		)
+		values (
+		    #{calNo},
+		    #{empNo},
+		    #{calTtl},
+		    #{calCn},
+		    #{calType},
+		    TO_DATE(#{calBgngDt}, 'YYYY-MM-DD HH24:MI:SS'),
+			TO_DATE(#{calEndDt}, 'YYYY-MM-DD HH24:MI:SS'),
+		    #{calPlc},
+		    #{calCol},
+		    #{calColTxt},
+		    #{calOpenYn},
+		    #{calAllYn}
+		)
+	</insert>
+
+	<!-- 
+	일정수정시 calVO : CalVO(calNo=C3, empNo=null, empNm=김삼밥, calTtl=적극적인 버그찾기기간, calCn=하루 5분간 분노합시다
+	, calBgngDt=2023-03-07 00:00, calEndDt=2023-03-08 00:00, calPlc=학원, calType=개발계획, calCol=#9775fa, calColTxt=#ffffff
+	, calOpenYn=true, calAllYn=false)
+	 -->
+	<update id="updateCalender" parameterType="calVO">
+		UPDATE CAL SET
+		    CAL_TTL = #{calTtl},
+		    CAL_CN = #{calCn},
+		    CAL_TYPE = #{calType},
+		    CAL_BGNG_DT = TO_DATE(#{calBgngDt}, 'YYYY-MM-DD HH24:MI:SS'),
+		    CAL_END_DT = TO_DATE(#{calEndDt}, 'YYYY-MM-DD HH24:MI:SS'),
+		    CAL_PLC = #{calPlc},
+		    CAL_COL = #{calCol},
+		    CAL_OPEN_YN = #{calOpenYn},
+		    CAL_ALL_YN = #{calAllYn}
+		WHERE CAL_NO = #{calNo}
+	</update>
+	
+	<update id="updateCalenderDay" parameterType="calVO">
+		UPDATE CAL SET
+			   CAL_BGNG_DT = TO_DATE(#{calBgngDt}, 'YYYY-MM-DD HH24:MI:SS'),
+			   CAL_END_DT = TO_DATE(#{calEndDt}, 'YYYY-MM-DD HH24:MI:SS')
+		 WHERE CAL_NO = #{calNo}
+	</update>
+
+	<delete id="deleteCalender" parameterType="calVO">
+		DELETE FROM CAL
+		WHERE CAL_NO = #{calNo}
+	</delete>
+	
+	<select id="getEmp" resultType="empVO">
+		SELECT EMP_NO,
+    		   EMP_NM
+		       FROM EMP 
+		 WHERE EMP_NO = 202300
+	</select>
+	
+	<select id="todayCalCount" parameterType="calVO" resultType="int">
+	 	SELECT COUNT(CAL_NO)
+		  FROM CAL C
+		  JOIN EMP E ON C.EMP_NO = E.EMP_NO
+		 WHERE C.EMP_NO IN (#{empNo}, 202300) 
+           AND TO_CHAR(C.CAL_BGNG_DT, 'YYYY-MM-DD')
+          LIKE TO_CHAR(SYSDATE,'YYYY-MM-DD')
+	</select>
+	
+
+</mapper>

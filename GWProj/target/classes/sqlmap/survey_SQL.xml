@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.SrvyMapper">
+<!-- 설문조사 Map -->
+ <resultMap type="srvyVO" id="srvyMap">
+   	<result property="srvyNo" 		column="SRVY_NO" />
+   	<result property="empNo" 		column="EMP_NO" />
+   	<result property="empNm" 		column="EMP_NM" />
+   	<result property="jbpsNm" 		column="JBPS_NM" />
+   	<result property="deptNm" 		column="DEPT_NM" />
+   	<result property="fileGroupNo" 		column="FILE_GROUP_NO" />
+   	<result property="srvyTtl" 		column="SRVY_TTL" />
+   	<result property="srvyExpln" 		column="SRVY_EXPLN" />
+   	<result property="srvyRegYmd" 		column="SRVY_REG_YMD" />
+   	<result property="srvyBgngYmd" 		column="SRVY_BGNG_YMD" />
+   	<result property="srvyEndYmd" 		column="SRVY_END_YMD" />
+   	<result property="srvySsts" 		column="SRVY_SSTS" />
+   	<result property="srvyRspnsCnt" 		column="SRVY_RSPNS_CNT" />
+   	<result property="srvyCmntCnt" 		column="SRVY_CMNT_CNT" />
+   	<result property="srvyTrprCnt" 		column="SRVY_TRPR_CNT" />
+   	<result property="empTitle" 		column="EMP_TITLE" />
+   	<result property="srvyProfile" 		column="SRVY_PROFILE" />
+   	<collection property="srvyTrprVOList" resultMap="srvyTrprMap" ></collection>
+   	<collection property="srvyQstnVOList" resultMap="srvyQstnMap" ></collection>
+   	<collection property="srvyQstnArtVOList" resultMap="srvyQstnArtMap" ></collection>
+   	<collection property="srvyRspnVOList" resultMap="srvyRspnMap" ></collection>
+  </resultMap>
+<!-- 설문대상자 -->
+ <resultMap type="srvyTrprVO" id="srvyTrprMap">
+   	<result property="srvyNo" 		column="SRVY_NO" />
+   	<result property="empNo" 		column="EMP_NO" />
+   	<result property="deptNo" 		column="DEPT_NO" />
+  </resultMap>
+
+<!-- 설문조사 질문 -->
+   <resultMap type="srvyQstnVO" id="srvyQstnMap">
+   	<result property="srvyQstnNo" 		column="SRVY_QSTN_NO" />
+   	<result property="srvyNo" 		column="SRVY_QSTN_NO" />
+   	<result property="srvyQstnCn" 		column="SRVY_QSTN_CN" />
+   	<result property="srvyQstnType" 		column="SRVY_QSTN_TYPE" />
+   	<collection property="srvyQstnArtVOList" resultMap="srvyQstnArtMap" ></collection>
+  </resultMap>
+
+<!-- 설문조사 보기목록 -->
+ <resultMap type="srvyQstnArtVO" id="srvyQstnArtMap">
+   	<result property="srvyQstnArtclOrder" 		column="SRVY_QSTN_ARTCL_ORDER" />
+   	<result property="srvyQstnNo" 		column="SRVY_QSTN_NO" />
+   	<result property="srvyNo" 		column="SRVY_NO" />
+   	<result property="srvyQstnArtclCn" 		column="SRVY_QSTN_ARTCL_CN" />
+  </resultMap>
+
+<!-- 설문조사 응답목록 -->
+ <resultMap type="srvyRspnVO" id="srvyRspnMap">
+   	<result property="srvyRspnsNo" 		column="SRVY_RSPNS_NO" />
+   	<result property="srvyQstnNo" 		column="SRVY_QSTN_NO" />
+   	<result property="srvyNo" 		column="SRVY_NO" />
+   	<result property="empNo" 		column="EMP_NO" />
+   	<result property="srvyQstnNm" 		column="SRVY_QSTN_NM" />
+   	<result property="srvyQstnArtNm" 		column="SRVY_QSTN_NM" />
+   	<result property="srvyRspnsRegYmd" 		column="SRVY_RSPNS_REG_YMD" />
+   	<result property="srvyRspnsCn" 		column="SRVY_RSPNS_CN" />
+  </resultMap>
+
+<!-- 설문조사 해시태그 -->
+
+
+<!-- 설문조사 댓글 -->
+  	<resultMap type="cmntVO" id="chkMap2">
+		<result property="cmntNo"  column="CMNT_NO"/>
+		<result property="empNo"   column="EMP_NO"/>
+		<result property="cEmpNo"   column="C_EMP_NO"/>
+		<result property="empTitle"   column="EMP_TITLE"/>
+		<result property="empDeptNm"   column="EMP_DEPT_NM"/>
+		<result property="cmntClsf"  column="CMNT_CLSF"/>
+		<result property="cmntCn"  column="CMNT_CN"/>
+		<result property="cmntRegYmd" column="CMNT_REG_YMD"/>
+		<result property="cmntProfile" column="CMNT_PROFILE"/>
+	</resultMap>
+
+
+<!-- 상태별 검색조건 -->
+	<sql id="where">
+		<if test="status == 'progress'">
+			AND T.SRVY_SSTS = 'SRVY0001'
+		</if>
+		<if test="status == 'hold'">
+			AND T.SRVY_SSTS = 'SRVY0002'
+		</if>
+		<if test="status == 'end'">
+			AND T.SRVY_SSTS = 'SRVY0003'
+		</if>
+		<if test="enroll != null">
+			AND T.EMP_NO = #{enroll}
+		</if>
+		<if test="reply != null">
+			AND T.EMP_NO IN (SELECT EMP_NO FROM SRVY_RSPNS WHERE SRVY_NO = T.SRVY_NO)
+		</if>
+	</sql>
+	<sql id="empWhere">
+		<if test="empNo != null">
+			 WHERE S.EMP_NO=#{empNo}
+		</if>
+	</sql>
+	<sql id="dateArr">
+		<choose>
+			<when test="(dateArr1 != null and dateArr1!='') and (dateArr2 != null and dateArr2!='')">
+				AND TO_CHAR(T.SRVY_BGNG_YMD,'YYYYMMDDHH24MISS') BETWEEN #{dateArr1}||'000000' AND #{dateArr2}||'235959'
+			</when>
+			<when test="(dateArr1 != null and dateArr1!='') and (dateArr2 == null and dateArr2=='')">
+				AND TO_CHAR(T.SRVY_BGNG_YMD,'YYYYMMDDHH24MISS') BETWEEN #{dateArr1}||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959'
+			</when>
+			<otherwise>
+			    AND 2=2
+			</otherwise>
+		</choose>
+	</sql>
+
+	<!-- 조건에 따라 설문조사 목록을 가져오는 메서드 -->
+	<select id="getSrvyList" parameterType="hashMap" resultType="srvyVO">
+	SELECT PG.*
+		FROM (
+		        SELECT ROWNUM RNUM, TT.*
+		        FROM (
+		                SELECT
+		                  FN_GET_EMP_NM(T.EMP_NO) AS EMP_NM,
+		                  FN_GET_JBPS_NM(T.EMP_NO) AS JBPS_NM,
+		                  FN_GET_DEPT_NM(T.EMP_NO) AS DEPT_NM,
+		                  FN_GET_SRVY_CMNT_CNT(T.SRVY_NO) AS SRVY_CMNT_CNT,
+		                  FN_GET_SRVY_TRPR_CNT(T.SRVY_NO) AS SRVY_TRPR_CNT,
+		                  FN_GET_SRVY_RSPNS_CNT(T.SRVY_NO) AS SRVY_RSPNS_CNT,
+		                  FN_GET_SRVY_RSPNS_EMP_CNT(T.SRVY_NO,#{empNo}) AS RSPN_YN,
+		                  T.SRVY_NO, T.EMP_NO, T.FILE_GROUP_NO, T.SRVY_TTL, T.SRVY_EXPLN, T.SRVY_REG_YMD, T.SRVY_BGNG_YMD, T.SRVY_END_YMD, T.SRVY_SSTS
+		                FROM (
+		                    SELECT S.SRVY_NO, S.EMP_NO, S.FILE_GROUP_NO, S.SRVY_TTL, S.SRVY_EXPLN, S.SRVY_REG_YMD, S.SRVY_BGNG_YMD, S.SRVY_END_YMD, S.SRVY_SSTS
+		                      FROM SRVY S
+<!--  		                     WHERE S.EMP_NO=#{empNo}  -->
+ 						<include refid="empWhere"></include>
+		                    UNION
+		                    SELECT SRVY_NO, EMP_NO, FILE_GROUP_NO, SRVY_TTL, SRVY_EXPLN, SRVY_REG_YMD, SRVY_BGNG_YMD, SRVY_END_YMD, SRVY_SSTS
+		                      FROM SRVY SS
+		                     WHERE SS.SRVY_NO IN (SELECT S.SRVY_NO FROM SRVY_TRPR S
+<!-- 		                     						WHERE S.EMP_NO=#{empNo} -->
+														<include refid="empWhere"></include>
+		                     						)
+		                ) T
+		                WHERE 1=1
+		                <include refid="where"></include>
+		                <include refid="dateArr"></include>
+		                ORDER BY T.SRVY_END_YMD DESC
+		        ) TT
+		) PG
+	    WHERE PG.RNUM BETWEEN  (#{currentPage}*#{size})-(#{size}-1) AND (#{currentPage}*#{size})
+	</select>
+
+	<!-- 전체 설문조사의 수를 가져오는 메서드 -->
+	<select id="getSrvyTotal" resultType="int" parameterType="hashMap">
+    SELECT COUNT(TT.SRVY_NO)
+    FROM (
+
+            SELECT
+              FN_GET_EMP_NM(T.EMP_NO) AS EMP_NM,
+              FN_GET_JBPS_NM(T.EMP_NO) AS JBPS_NM,
+              FN_GET_DEPT_NM(T.EMP_NO) AS DEPT_NM,
+              FN_GET_SRVY_CMNT_CNT(T.SRVY_NO) AS SRVY_CMNT_CNT,
+              FN_GET_SRVY_TRPR_CNT(T.SRVY_NO) AS SRVY_TRPR_CNT,
+              FN_GET_SRVY_RSPNS_CNT(T.SRVY_NO) AS SRVY_RSPNS_CNT,
+              FN_GET_SRVY_RSPNS_EMP_CNT(T.SRVY_NO,T.EMP_NO) AS RSPN_YN,
+              T.SRVY_NO, T.EMP_NO, T.FILE_GROUP_NO, T.SRVY_TTL, T.SRVY_EXPLN, T.SRVY_REG_YMD, T.SRVY_BGNG_YMD, T.SRVY_END_YMD, T.SRVY_SSTS
+            FROM (
+                SELECT S.SRVY_NO, S.EMP_NO, S.FILE_GROUP_NO, S.SRVY_TTL, S.SRVY_EXPLN, S.SRVY_REG_YMD, S.SRVY_BGNG_YMD, S.SRVY_END_YMD, S.SRVY_SSTS
+                  FROM SRVY S
+                 WHERE S.EMP_NO=#{empNo}
+                UNION
+                SELECT SRVY_NO, EMP_NO, FILE_GROUP_NO, SRVY_TTL, SRVY_EXPLN, SRVY_REG_YMD, SRVY_BGNG_YMD, SRVY_END_YMD, SRVY_SSTS
+                  FROM SRVY SS
+                 WHERE SS.SRVY_NO IN (SELECT SRVY_NO FROM SRVY_TRPR WHERE EMP_NO=#{empNo})
+            ) T
+            WHERE 1=1
+            <include refid="where"></include>
+            <include refid="dateArr"></include>
+            ORDER BY T.SRVY_END_YMD DESC
+    ) TT
+	</select>
+
+	<!-- 설문조사의 상세 정보를 불러오는 메서드 -->
+	<select id="getSrvyDetail" parameterType="String" resultMap="srvyMap">
+		SELECT S.SRVY_NO, S.EMP_NO, S.FILE_GROUP_NO, S.SRVY_TTL, S.SRVY_EXPLN, S.SRVY_REG_YMD, S.SRVY_BGNG_YMD, S.SRVY_END_YMD, S.SRVY_SSTS,
+		       Q.SRVY_QSTN_NO, Q.SRVY_NO, Q.SRVY_QSTN_CN, Q.SRVY_QSTN_TYPE,
+		       QA.SRVY_QSTN_ARTCL_ORDER, QA.SRVY_QSTN_NO, QA.SRVY_NO, QA.SRVY_QSTN_ARTCL_CN,
+		       FN_GET_EMP_NMJBPS(S.EMP_NO) AS EMP_TITLE, FN_GET_DEPT_NM(S.EMP_NO) AS DEPT_NM,
+			   FN_GET_EMP_PROFILE_THUMB(S.EMP_NO) AS SRVY_PROFILE,
+		       FN_GET_SRVY_CMNT_CNT(Q.SRVY_NO) AS SRVY_CMNT_CNT, FN_GET_SRVY_TRPR_CNT(Q.SRVY_NO) AS SRVY_TRPR_CNT, FN_GET_SRVY_RSPNS_CNT(Q.SRVY_NO) AS SRVY_RSPNS_CNT
+		 FROM SRVY S
+		 LEFT OUTER JOIN SRVY_QSTN Q ON(Q.SRVY_NO = S.SRVY_NO)
+		 LEFT OUTER JOIN SRVY_QSTN_ARTCL QA ON(QA.SRVY_QSTN_NO = Q.SRVY_QSTN_NO)
+		 WHERE S.SRVY_NO = #{srvyNo}
+		 ORDER BY Q.SRVY_QSTN_NO, QA.SRVY_QSTN_ARTCL_ORDER
+	</select>
+
+	<!-- 설문대상자 정보를 불러오는 메서드 -->
+	<select id="getTrprVOList" parameterType="String" resultType="srvyTrprVO">
+         SELECT EMP_NO, FN_GET_EMP_NMJBPS(EMP_NO) AS TRPR_EMP_TITLE, FN_GET_DEPT_NM(EMP_NO) AS DEPT_NM,
+                FN_GET_EMP_PROFILE_THUMB(EMP_NO) AS SRVY_PROFILE
+         FROM SRVY_TRPR
+         WHERE SRVY_NO=#{srvyNo}
+	</select>
+
+	<!-- 설문조사 대상자 수와 답변수를 가져오는 메서드 -->
+	<select id="getTrprRspnsCnt" parameterType="String" resultType="srvyVO">
+	   SELECT FN_GET_SRVY_RSPNS_CNT(SRVY_NO) AS SRVY_RSPNS_CNT ,
+                  FN_GET_SRVY_TRPR_CNT(SRVY_NO) AS SRVY_TRPR_CNT
+         FROM SRVY
+         WHERE 1=1
+           AND SRVY_NO =#{srvyNo}
+	</select>
+
+	<!-- 설문조사 추가 -->
+	<insert id="createSurvey" parameterType="srvyVO" useGeneratedKeys="true" keyProperty="srvyNo">
+		<selectKey resultType="String" keyProperty="srvyNo" order="BEFORE">
+			SELECT 'SRVY'||TRIM(TO_CHAR(SEQ_SRVY_NO.NEXTVAL,'0000'))
+			FROM DUAL
+		</selectKey>
+		INSERT INTO SRVY(
+				SRVY_NO,EMP_NO,
+			<if test="fileGroupNo != null">
+				FILE_GROUP_NO,
+			</if>
+				SRVY_TTL, SRVY_EXPLN, SRVY_REG_YMD, SRVY_BGNG_YMD, SRVY_END_YMD, SRVY_SSTS
+				)
+		VALUES(
+				#{srvyNo}, #{empNo},
+				<if test="fileGroupNo != null">
+				#{fileGroupNo},
+				</if>
+				#{srvyTtl}, #{srvyExpln}, SYSDATE, #{srvyBgngYmd}, #{srvyEndYmd}, 'SRVY0001'
+				)
+	</insert>
+
+	<!-- 설문조사 대상자 추가 -->
+	<insert id="createSurveyTrpr" parameterType="srvyTrprVO">
+		INSERT INTO SRVY_TRPR(SRVY_NO,EMP_NO)
+		VALUES( #{srvyNo}, #{empNo})
+	</insert>
+
+	<!-- 설문조사 질문 추가 -->
+	<insert id="createSurveyQstn" parameterType="srvyQstnVO">
+		<selectKey resultType="String" keyProperty="srvyQstnNo" order="BEFORE">
+			SELECT 'QSTN'||TRIM(TO_CHAR(SEQ_SRVY_QSTN_NO.NEXTVAL,'0000'))
+			FROM DUAL
+		</selectKey>
+		INSERT INTO SRVY_QSTN(SRVY_QSTN_NO, SRVY_NO, SRVY_QSTN_CN, SRVY_QSTN_TYPE)
+		VALUES(#{srvyQstnNo},#{srvyNo},#{srvyQstnCn},#{srvyQstnType})
+	</insert>
+
+	<!-- 설문조사 질문보기 추가 -->
+	<insert id="createSurveyQstnArt" parameterType="srvyQstnArtVO">
+		INSERT INTO SRVY_QSTN_ARTCL(SRVY_QSTN_ARTCL_ORDER, SRVY_QSTN_NO, SRVY_NO, SRVY_QSTN_ARTCL_CN)
+		VALUES( #{srvyQstnArtclOrder}, #{srvyQstnNo}, #{srvyNo}, #{srvyQstnArtclCn} )
+	</insert>
+
+	<!-- 답변 추가 -->
+	<insert id="createSurveyRspn" parameterType="srvyRspnVO">
+		INSERT INTO SRVY_RSPNS(SRVY_RSPNS_NO, SRVY_QSTN_NO, SRVY_NO, EMP_NO, SRVY_RSPNS_REG_YMD, SRVY_RSPNS_CN)
+		VALUES ('RSPN'||TRIM(TO_CHAR(SEQ_SRVY_RSPN_NO.NEXTVAL,'0000')),#{srvyQstnNo},#{srvyNo},#{empNo},SYSDATE,#{srvyRspnsCn})
+	</insert>
+
+	<!-- 해시태그 그룹 번호 추가 -->
+	<insert id="createHashTagGr" parameterType="String">
+		INSERT INTO HASH_TAG_GR(HASH_TAG_GR_NO, USAGE)
+		VALUES( (SELECT 'TAGR'||TRIM(TO_CHAR(NVL(MAX(SUBSTR(HASH_TAG_GR_NO,5)),0)+1,'0000')) FROM HASH_TAG_GR), #{srvyNo} )
+	</insert>
+
+	<!-- 해시태그 사용 정보 추가 -->
+	<insert id="createHashTagUse" parameterType="hashMap">
+		<selectKey resultType="String" order="BEFORE" keyProperty="hashTagGrNo">
+			SELECT HASH_TAG_GR_NO FROM HASH_TAG_GR
+			WHERE USAGE = #{srvyNo}
+		</selectKey>
+
+		<foreach collection="hashTag" item="item" index="index" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" ">
+		INTO HASH_TAG(HASH_TAG_REG_NO, HASH_TAG_NO, HASH_TAG_GR_NO)
+		VALUES ( (SELECT 'TREG'||TRIM(TO_CHAR(NVL(MAX(SUBSTR(HASH_TAG_REG_NO,5)),0)+#{index}+1,'0000')) FROM HASH_TAG), #{item} ,#{hashTagGrNo} )
+		</foreach>
+	</insert>
+
+	<!-- 등록된 해시태그 목록 가져오기 -->
+	<select id="getHashTagList" parameterType="hashMap" resultType="hashTagListVO">
+		SELECT HASH_TAG_NO, HASH_TAG_NM, USE_YN
+		  FROM HASH_TAG_LIST
+		  <if test="useYn != null">
+		 WHERE USE_YN=#{useYn}
+		  </if>
+		  ORDER BY HASH_TAG_NO
+	</select>
+
+	<!-- 사용한 해시태그 가져오기 -->
+	<select id="getUsedHashTag" parameterType="srvyVO" resultType="hashTagVO">
+		SELECT  H.HASH_TAG_NO, H.HASH_TAG_GR_NO,
+                HTL.HASH_TAG_NM, HG.USAGE
+		  FROM HASH_TAG H
+		 INNER JOIN HASH_TAG_GR HG ON(H.HASH_TAG_GR_NO=HG.HASH_TAG_GR_NO)
+		 INNER JOIN HASH_TAG_LIST HTL ON(H.HASH_TAG_NO=HTL.HASH_TAG_NO)
+		WHERE HG.USAGE =#{srvyNo}
+		  AND HTL.USE_YN='Y'
+	</select>
+
+	<!-- 해시태그명 중복검사 -->
+	<select id="hashTagNmChk" parameterType="hashTagListVO" resultType="hashTagListVO">
+		SELECT HASH_TAG_NO, HASH_TAG_NM
+		  FROM HASH_TAG_LIST
+		 WHERE HASH_TAG_NM LIKE #{hashTagNm}
+	</select>
+
+	<!--  신규 해시태그 추가 -->
+	<insert id="createHashTag" parameterType="hashTagListVO">
+		INSERT INTO HASH_TAG_LIST(HASH_TAG_NO, HASH_TAG_NM, USE_YN)
+		VALUES( (SELECT 'TAG'||TRIM(TO_CHAR(NVL(MAX(SUBSTR(HASH_TAG_NO,4)),0)+1,'0000')) FROM HASH_TAG_LIST), #{hashTagNm}, #{useYn})
+	</insert>
+
+	<!--  해시태그 삭제 -->
+	<delete id="deleteHashTag" parameterType="hashTagListVO">
+		DELETE
+		  FROM HASH_TAG_LIST
+		WHERE HASH_TAG_NO=#{hashTagNo}
+	</delete>
+
+	<!--  해시태그 사용여부 업데이트 -->
+	<update id="modifyUseYn" parameterType="hashTagListVO">
+		UPDATE HASH_TAG_LIST
+			SET
+				<if test="useYn != null">
+					USE_YN=#{useYn},
+				</if>
+				<if test="hashTagNm != null">
+					HASH_TAG_NM=#{hashTagNm},
+				</if>
+				HASH_TAG_NO=HASH_TAG_NO
+			WHERE HASH_TAG_NO=#{hashTagNo}
+	</update>
+
+	<!-- 설문조사 답변 가져오기 -->
+	<select id="getSrvyRspn" parameterType="hashMap" resultType="srvyRspnVO">
+	SELECT R.SRVY_RSPNS_NO, R.SRVY_QSTN_NO, FN_GET_QSTN_NM(R.SRVY_QSTN_NO) AS SRVY_QSTN_NM, R.SRVY_NO, R.EMP_NO, R.SRVY_RSPNS_REG_YMD,
+	       Q.SRVY_QSTN_TYPE, FN_GET_QSTN_ART_NM(R.SRVY_QSTN_NO, R.EMP_NO) AS SRVY_QSTN_ART_NM
+	  FROM SRVY_RSPNS R
+	 LEFT OUTER JOIN SRVY_QSTN Q ON (Q.SRVY_QSTN_NO=R.SRVY_QSTN_NO)
+	 LEFT OUTER JOIN SRVY_QSTN_ARTCL A ON (
+	         								A.SRVY_QSTN_NO = Q.SRVY_QSTN_NO
+	                                        AND TO_CHAR(A.SRVY_QSTN_ARTCL_ORDER)=R.SRVY_RSPNS_CN)
+     WHERE R.EMP_NO=#{empNo}
+       AND R.SRVY_NO=#{srvyNo}
+      ORDER BY R.SRVY_QSTN_NO DESC
+	</select>
+
+<!-- 댓글 목록 가져오기 -->
+	<select id="getSrvyComment" parameterType="srvyVO" resultType="cmntVO">
+		SELECT CMNT_NO, EMP_NO, CMNT_CLSF, CMNT_CN, TO_CHAR(CMNT_REG_YMD,'YYYY-MM-DD HH24:MI:SS') AS CMNT_REG_YMD,
+     		   FN_GET_EMP_NMJBPS(EMP_NO) AS EMP_TITLE, FN_GET_DEPT_NM(EMP_NO) AS EMP_DEPT_NM,
+		       FN_GET_EMP_PROFILE_THUMB(EMP_NO) AS CMNT_PROFILE
+		 FROM CMNT
+		 WHERE CMNT_CLSF = #{srvyNo}
+		 ORDER BY CMNT_REG_YMD
+	</select>
+
+<!-- 최신 댓글 목록 가져오기 -->
+	<select id="getSrvyRecentComment" parameterType="srvyVO" resultType="cmntVO">
+	   SELECT TT.*
+	     FROM (
+	        SELECT ROWNUM RNUM,T.*
+	          FROM (
+	            SELECT C.CMNT_NO, C.EMP_NO, C.CMNT_CLSF, C.CMNT_CN, TO_CHAR(C.CMNT_REG_YMD,'YYYY-MM-DD HH24:MI:SS') AS CMNT_REG_YMD,
+	                   FN_GET_EMP_NMJBPS(C.EMP_NO) AS EMP_TITLE, FN_GET_DEPT_NM(C.EMP_NO) AS EMP_DEPT_NM,
+	                   FN_GET_EMP_PROFILE_THUMB(C.EMP_NO) AS CMNT_PROFILE,
+	                   S.SRVY_NO, S.SRVY_TTL AS SRVY_TTL
+	             FROM CMNT C
+	            INNER JOIN SRVY S ON (S.SRVY_NO = C.CMNT_CLSF)
+	            WHERE S.EMP_NO=#{empNo}
+	             ORDER BY C.CMNT_REG_YMD DESC
+	             ) T
+	         ) TT
+         WHERE TT.RNUM BETWEEN 1 AND 5
+	</select>
+
+	 <!-- 댓글 등록 -->
+	 <insert id="createCmnt" parameterType="cmntVO">
+	 	<selectKey resultType="int" order="BEFORE" keyProperty="cmntNo">
+		 	SELECT MAX(CMNT_NO)+1 FROM CMNT
+		 </selectKey>
+	 	INSERT INTO CMNT (CMNT_NO, EMP_NO, CMNT_CLSF, CMNT_CN, CMNT_REG_YMD)
+	 	VALUES
+	 		(#{cmntNo}, #{empNo}, #{cmntClsf},#{cmntCn}, SYSDATE)
+	 </insert>
+
+	 <!-- 댓글 삭제 -->
+	 <delete id="delCmntList" parameterType="cmntVO">
+	 	DELETE FROM CMNT WHERE CMNT_NO=#{cmntNo}
+	 </delete>
+
+	 <!-- 댓글 수정 -->
+	 <update id="updateCmnt" parameterType="cmntVO">
+	 	UPDATE CMNT SET CMNT_CN=#{cmntCn}, CMNT_REG_YMD=SYSDATE WHERE CMNT_NO=#{cmntNo}
+	 </update>
+
+	 <!-- 설문조사 정보 수정 -->
+	 <update id="modifySrvyInfo" parameterType="srvyVO">
+	 	UPDATE SRVY
+	 	SET
+	 		<if test="fileGroupNo != null">
+		 		FILE_GROUP_NO=#{fileGroupNo}
+	 		</if>
+	 		<if test="srvySsts != null">
+	 			SRVY_SSTS = #{srvySsts}
+	 		</if>
+	 		<if test="srvyTtl != null">
+				SRVY_TTL = #{srvyTtl}
+	 		</if>
+	 		<if test="srvyExpln != null">
+				SRVY_EXPLN = #{srvyExpln}
+	 		</if>
+	 		<if test="srvyBgngYmd != null">
+				SRVY_BGNG_YMD = #{srvyBgngYmd}
+	 		</if>
+	 		<if test="srvyEndYmd != null">
+				SRVY_END_YMD = #{srvyEndYmd}
+	 		</if>
+	 	WHERE SRVY_NO=#{srvyNo}
+	 </update>
+
+	<!-- 설문조사 정보 가져오기 (진행중, 보류, 마감, 등록건수) -->
+	<select id="getSrvyCnt" parameterType="srvyVO" resultType="srvyVO">
+		SELECT FN_GET_SRVY_CNT(#{empNo},'진행') AS PROGRESS_CNT,FN_GET_SRVY_CNT(#{empNo},'보류') AS HOLD_CNT, FN_GET_SRVY_CNT(#{empNo},'마감') AS END_CNT,
+		        (SELECT COUNT(SRVY_NO) FROM SRVY WHERE EMP_NO IN #{empNo}) AS ENROLL_CNT
+		FROM DUAL
+	</select>
+
+	<!-- 응답해야할 설문조사 가져오기(메인용) -->
+	<select id="getSrvyTrprList" parameterType="srvyVO" resultType="srvyVO">
+		SELECT TT.*
+		  FROM (
+		    SELECT ROWNUM RNUM,T.*
+		      FROM (
+					 SELECT S.SRVY_NO, FN_GET_EMP_NMJBPS(S.EMP_NO) AS EMP_TITLE, S.FILE_GROUP_NO, S.SRVY_TTL, S.SRVY_EXPLN, S.SRVY_REG_YMD, S.SRVY_BGNG_YMD, S.SRVY_END_YMD, S.SRVY_SSTS,
+					        COUNT(SR.SRVY_RSPNS_NO) AS SRVY_RSPNS_CNT
+					   FROM SRVY S
+					 LEFT OUTER JOIN SRVY_RSPNS SR ON (SR.SRVY_NO = S.SRVY_NO)
+                     LEFT OUTER JOIN SRVY_TRPR TR ON (TR.SRVY_NO = S.SRVY_NO)
+					   WHERE TR.EMP_NO = #{empNo}
+					   GROUP BY S.SRVY_NO, S.EMP_NO, S.FILE_GROUP_NO, S.SRVY_TTL, S.SRVY_EXPLN, S.SRVY_REG_YMD, S.SRVY_BGNG_YMD, S.SRVY_END_YMD, S.SRVY_SSTS
+					   ORDER BY S.SRVY_REG_YMD
+		        ) T
+		    ) TT
+		WHERE TT.RNUM BETWEEN 1 AND 3
+	</select>
+	<!-- 등록한 설문조사 가져오기(메인용) -->
+	<select id="getSrvyEnrollList" parameterType="srvyVO" resultType="srvyVO">
+			SELECT TT.*
+			  FROM (
+			    SELECT ROWNUM RNUM,T.*
+			      FROM (
+			            SELECT SRVY_NO, FN_GET_EMP_NMJBPS(EMP_NO) AS EMP_TITLE, SRVY_TTL, SRVY_EXPLN, SRVY_REG_YMD, SRVY_BGNG_YMD, SRVY_END_YMD, SRVY_SSTS
+			            FROM SRVY
+			            WHERE EMP_NO = #{empNo}
+			            ORDER BY SRVY_REG_YMD
+			        ) T
+			    ) TT
+			WHERE TT.RNUM BETWEEN 1 AND 3
+	</select>
+
+<!-- 설문조사 질문별 답변 수 가져오기 (차트용) -->
+	<select id="getRspnCntChart" parameterType="srvyQstnVO" resultType="srvyRspnVO">
+<!-- 	SELECT Q.SRVY_QSTN_NO, R.SRVY_RSPNS_CN, COUNT(*) AS RSPNS_CNT, FN_GET_RSPN_CNT(Q.SRVY_QSTN_NO) AS TOTAL_RSPN_CNT, -->
+<!--            A.SRVY_QSTN_ARTCL_ORDER,A.SRVY_QSTN_ARTCL_CN -->
+<!-- 	FROM SRVY_QSTN Q -->
+<!-- 	LEFT OUTER JOIN SRVY_RSPNS R ON (R.SRVY_QSTN_NO = Q.SRVY_QSTN_NO) -->
+<!--    INNER JOIN SRVY_QSTN_ARTCL A ON(A.SRVY_QSTN_NO = R.SRVY_QSTN_NO AND A.SRVY_QSTN_ARTCL_ORDER=R.SRVY_RSPNS_CN) -->
+<!-- 	WHERE Q.SRVY_QSTN_TYPE = 'QSTN0001' -->
+<!-- 	  AND Q.SRVY_QSTN_NO IN (SELECT SRVY_QSTN_NO FROM SRVY_QSTN WHERE SRVY_NO = #{srvyNo}) -->
+<!-- 	GROUP BY Q.SRVY_QSTN_NO, R.SRVY_RSPNS_CN,A.SRVY_QSTN_ARTCL_ORDER,FN_GET_RSPN_CNT(Q.SRVY_QSTN_NO), -->
+<!--                 A.SRVY_QSTN_ARTCL_CN -->
+      SELECT Q.SRVY_QSTN_NO, R.SRVY_RSPNS_CN, COUNT(*) AS RSPNS_CNT, FN_GET_RSPN_CNT(Q.SRVY_QSTN_NO) AS TOTAL_RSPN_CNT,
+                A.SRVY_QSTN_ARTCL_ORDER,A.SRVY_QSTN_ARTCL_CN
+        FROM SRVY_QSTN Q
+       LEFT OUTER JOIN SRVY_RSPNS R ON (R.SRVY_QSTN_NO = Q.SRVY_QSTN_NO)
+         INNER JOIN SRVY_QSTN_ARTCL A ON(A.SRVY_QSTN_NO = R.SRVY_QSTN_NO AND TO_CHAR(A.SRVY_QSTN_ARTCL_ORDER)=R.SRVY_RSPNS_CN)
+        WHERE Q.SRVY_QSTN_TYPE = 'QSTN0001'
+         AND Q.SRVY_QSTN_NO IN (SELECT SRVY_QSTN_NO FROM SRVY_QSTN WHERE SRVY_NO =  #{srvyNo})
+       GROUP BY Q.SRVY_QSTN_NO, R.SRVY_RSPNS_CN,A.SRVY_QSTN_ARTCL_ORDER,FN_GET_RSPN_CNT(Q.SRVY_QSTN_NO),
+                A.SRVY_QSTN_ARTCL_CN
+      ORDER BY Q.SRVY_QSTN_NO,A.SRVY_QSTN_ARTCL_ORDER
+	</select>
+
+<!-- 설문조사를 삭제 -->
+	<delete id="deleteSrvy" parameterType="srvyVO">
+		DELETE FROM SRVY WHERE SRVY_NO=#{srvyNo}
+	</delete>
+
+<!-- 전체 설문조사 가져오기 (관리자) -->
+	<select id="getAdminSrvyList" resultType="srvyVO">
+	   SELECT PG.*
+		FROM (
+		        SELECT ROWNUM RNUM, TT.*
+		        FROM (
+		                SELECT
+		                 FN_GET_EMP_NM(T.EMP_NO) AS EMP_NM,
+		                  FN_GET_JBPS_NM(T.EMP_NO) AS JBPS_NM,
+		                  FN_GET_DEPT_NM(T.EMP_NO) AS DEPT_NM,
+		                  FN_GET_SRVY_CMNT_CNT(T.SRVY_NO) AS SRVY_CMNT_CNT,
+		                  FN_GET_SRVY_TRPR_CNT(T.SRVY_NO) AS SRVY_TRPR_CNT,
+		                  FN_GET_SRVY_RSPNS_CNT(T.SRVY_NO) AS SRVY_RSPNS_CNT,
+		                  T.SRVY_NO, T.EMP_NO, T.FILE_GROUP_NO, T.SRVY_TTL, T.SRVY_EXPLN, T.SRVY_REG_YMD, T.SRVY_BGNG_YMD, T.SRVY_END_YMD, T.SRVY_SSTS
+		                  FROM SRVY T
+		                WHERE 1=1
+		                <include refid="where"></include>
+		                <include refid="dateArr"></include>
+		                ORDER BY T.SRVY_END_YMD DESC
+		        ) TT
+		) PG
+	    WHERE PG.RNUM BETWEEN  (#{currentPage}*#{size})-(#{size}-1) AND (#{currentPage}*#{size})
+
+	</select>
+<!-- 전체 설문조사 전체 수 가져오기 (관리자) -->
+	<select id="getAdminSrvyTotalList" resultType="srvyVO">
+	   SELECT COUNT(TT.EMP_NM)
+	        FROM (
+	                SELECT
+	                 FN_GET_EMP_NM(T.EMP_NO) AS EMP_NM,
+	                  FN_GET_JBPS_NM(T.EMP_NO) AS JBPS_NM,
+	                  FN_GET_DEPT_NM(T.EMP_NO) AS DEPT_NM,
+	                  FN_GET_SRVY_CMNT_CNT(T.SRVY_NO) AS SRVY_CMNT_CNT,
+	                  FN_GET_SRVY_TRPR_CNT(T.SRVY_NO) AS SRVY_TRPR_CNT,
+	                  FN_GET_SRVY_RSPNS_CNT(T.SRVY_NO) AS SRVY_RSPNS_CNT,
+	                  T.SRVY_NO, T.EMP_NO, T.FILE_GROUP_NO, T.SRVY_TTL, T.SRVY_EXPLN, T.SRVY_REG_YMD, T.SRVY_BGNG_YMD, T.SRVY_END_YMD, T.SRVY_SSTS
+	                  FROM SRVY T
+	                WHERE 1=1
+	                ORDER BY T.SRVY_END_YMD DESC
+	        ) TT
+	</select>
+
+
+
+
+</mapper>

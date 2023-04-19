@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+   <!--
+   [마이바티스] 스프링에서 "_"를 사용한 컬럼명을 사용 시(BOOK 테이블의 BOOK_ID)
+   카멜케이스로 읽어줌(bookId)
+   ex) 테이블 컬러명이 member_id인 경우 jsp화면단에서 이 값을 사용 시 memberId로 사용
+   -->
+   <settings>
+      <setting name="mapUnderscoreToCamelCase" value="true"/>
+   </settings>
+
+   <!-- 자주 사용하는 타입의 별칭을 세팅 -->
+   <typeAliases>
+
+      <typeAlias type="kr.or.ddit.vo.EmpVO" alias="empVO" />
+      <typeAlias type="kr.or.ddit.vo.AuthrtVO" alias="authrtVO" />
+
+      <typeAlias type="kr.or.ddit.vo.CalVO" alias="calVO" />
+      <typeAlias type="kr.or.ddit.vo.TodoVO" alias="TodoVO" />
+      <typeAlias type="kr.or.ddit.vo.ChkVO" alias="ChkVO" />
+      <typeAlias type="kr.or.ddit.vo.VhrVO" alias="vhrVO" />
+      <typeAlias type="kr.or.ddit.vo.VhrRsvtVO" alias="vhrRsvtVO" />
+      <typeAlias type="kr.or.ddit.vo.RoomRsvtVO" alias="roomRsvtVO" />
+      <typeAlias type="kr.or.ddit.vo.MtgrmVO" alias="mtgrmVO" />
+      <typeAlias type="kr.or.ddit.vo.FilesVO" alias="FilesVO" />
+
+      <typeAlias type="kr.or.ddit.vo.AddrVO" alias="addrVO" />
+      <typeAlias type="kr.or.ddit.vo.MailVO" alias="mailVO" />
+      <typeAlias type="kr.or.ddit.vo.EmailRcvrVO" alias="emailRcvrVO" />
+      <typeAlias type="kr.or.ddit.vo.NoteVO" alias="noteVO" />
+      <typeAlias type="kr.or.ddit.vo.MsgRcvrVO" alias="msgRcvrVO" />
+      <typeAlias type="kr.or.ddit.vo.WholBVO" alias="wholBVO" />
+      <typeAlias type="kr.or.ddit.vo.GoodVO" alias="goodVO" />
+
+      <typeAlias type="kr.or.ddit.vo.WorkVO" alias="workVO" />
+
+      <typeAlias type="kr.or.ddit.vo.DailyReportVO" alias="dailyReportVO" />
+      <typeAlias type="kr.or.ddit.vo.SrvyVO" alias="srvyVO" />
+      <typeAlias type="kr.or.ddit.vo.SrvyQstnArtVO" alias="srvyQstnArtVO" />
+      <typeAlias type="kr.or.ddit.vo.SrvyQstnVO" alias="srvyQstnVO" />
+      <typeAlias type="kr.or.ddit.vo.SrvyRspnVO" alias="srvyRspnVO" />
+      <typeAlias type="kr.or.ddit.vo.SrvyTrprVO" alias="srvyTrprVO" />
+
+      <typeAlias type="kr.or.ddit.vo.HashTagGrVO" alias="hashTagGrVO" />
+      <typeAlias type="kr.or.ddit.vo.HashTagVO" alias="hashTagVO" />
+      <typeAlias type="kr.or.ddit.vo.HashTagListVO" alias="hashTagListVO" />
+
+
+      <typeAlias type="kr.or.ddit.vo.ProjVO" alias="projVO" />
+      <typeAlias type="kr.or.ddit.vo.PrtpntVO" alias="prtpntVO" />
+      <typeAlias type="kr.or.ddit.vo.TaskVO" alias="taskVO" />
+      <typeAlias type="kr.or.ddit.vo.BookmarkVO" alias="bookmarkVO" />
+      <typeAlias type="kr.or.ddit.vo.TaskCountVO" alias="taskCountVO" />
+      <typeAlias type="kr.or.ddit.vo.CmntVO" alias="cmntVO" />
+
+      <typeAlias type="kr.or.ddit.vo.EdocVO" alias="edocVO" />
+      <typeAlias type="kr.or.ddit.vo.AtrzLineInfoVO" alias="atrzLineInfoVO" />
+      <typeAlias type="kr.or.ddit.vo.AtrzVO" alias="atrzVO" />
+      <typeAlias type="kr.or.ddit.vo.AtrzRfrncVO" alias="atrzRfrncVO" />
+      <typeAlias type="kr.or.ddit.vo.DrftVO" alias="drftVO" />
+      <typeAlias type="kr.or.ddit.vo.HoliVO" alias="holiVO" />
+      <typeAlias type="kr.or.ddit.vo.PaginationInfoVO" alias="pagingVO" />
+
+      <typeAlias type="kr.or.ddit.vo.WorkVO" alias="workVO" />
+      <typeAlias type="kr.or.ddit.vo.Work2VO" alias="work2VO" />
+      <typeAlias type="kr.or.ddit.vo.Work3VO" alias="work3VO" />
+
+      <typeAlias type="kr.or.ddit.vo.FilesVO" alias="fileVO" />
+      <typeAlias type="kr.or.ddit.vo.FileGrVO" alias="fileGrVO" />
+
+      <typeAlias type="kr.or.ddit.vo.ArchiveVO" alias="arcVO" />
+
+      <typeAlias type="kr.or.ddit.vo.AlarmListVO" alias="alarmListVO" />
+      <typeAlias type="kr.or.ddit.vo.AlarmRecvVO" alias="alarmRecvVO" />
+
+
+   </typeAliases>
+
+</configuration>

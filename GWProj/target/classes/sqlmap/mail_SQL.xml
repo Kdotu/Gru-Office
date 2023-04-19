@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+
+<mapper namespace="kr.or.ddit.mapper.MailMapper">
+
+	<!-- 받은메일 목록 -->
+	<select id="recieveEMLList" parameterType="mailVO" resultType="mailVO">
+		WITH T AS(
+		    SELECT A.EML_NO, FN_GET_EMP_NM(A.EMP_NO) AS EMP_NM, (SELECT EML_TAG_COLOR FROM EML_TAG WHERE EML_TAG_NO = A.EML_TAG_NO) AS EML_TAG_COL,
+		       A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT,
+		       LAG(A.EML_TRSM_DT) OVER(ORDER BY A.EML_TRSM_DT DESC) AS PREV,
+		       A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO, B.EML_RCPTN_YN,
+		       CASE WHEN B.EML_RCPTN_YN='Y' THEN '확인' ELSE '미확인' END AS RCVR_YN,
+		       FN_GET_EMPNO_EMLADDR(B.EML_RCVR_ADDR) AS RCVR
+		    FROM EML A, EMAIL_RCVR B
+		    WHERE B.EML_RCVR_ADDR=(SELECT EMP_EML_ADDR FROM EMP WHERE EMP_NO=#{empNo}) AND A.EML_NO=B.EML_NO
+		    	   AND EML_CLSF_NO='EML_CLSF01'
+		    ORDER BY A.EML_TRSM_DT DESC
+		)
+		SELECT
+		    T.EML_NO, T.EMP_NM, T.EML_TAG_COL, T.EML_CLSF_NO, T.EML_TTL,
+		    T.EML_CN, T.EML_TRSM_DT,  T.PREV,
+		    CASE WHEN TO_CHAR(T.EML_TRSM_DT,'YYYY-MM-DD') != TO_CHAR(NVL(T.PREV,'1234-12-12'),'YYYY-MM-DD') THEN 1
+		        ELSE 0
+		    END RSLT,
+		    T.EML_IMPOR_YN, T.EML_SNDR_NO, T.FILE_GROUP_NO,T.RCVR_YN, T.RCVR
+		FROM T
+	</select>
+
+	<!-- 전체메일 건수 가져오는 함수 -->
+	<select id="totalMailCnt" parameterType="string" resultType="int">
+		SELECT COUNT(*)
+		FROM EML A, EMAIL_RCVR B
+		WHERE A.EML_NO=B.EML_NO AND FN_GET_EMPNO_EMLADDR(B.EML_RCVR_ADDR)=#{username} AND A.EML_CLSF_NO!='EML_CLSF03' AND A.EML_CLSF_NO!='EML_CLSF04'
+	</select>
+
+	<!-- 안읽은 메일 건수 가져오는 함수 -->
+	<select id="unReadMailCnt" parameterType="string" resultType="int">
+		SELECT COUNT(*)
+		FROM EMAIL_RCVR B, EML A
+		WHERE B.EML_NO=A.EML_NO AND FN_GET_EMPNO_EMLADDR(B.EML_RCVR_ADDR)=#{username} AND B.EML_RCPTN_YN='N' AND A.EML_CLSF_NO!='EML_CLSF03' AND A.EML_CLSF_NO!='EML_CLSF04'
+	</select>
+
+	<!-- 메일 상세보기 -->
+	<select id="detail" parameterType="mailVO" resultType="mailVO">
+		SELECT EML_NO, EMP_NO, FILE_GROUP_NO, EML_TAG_NO, EML_CLSF_NO, EML_TTL, EML_CN, EML_TRSM_DT, EML_IMPOR_YN, FN_GET_EMP_NMJBPS(EMP_NO) EML_SNDR_NO
+		FROM EML
+		WHERE EML_NO=#{emlNo}
+	</select>
+
+
+	<!-- 1. 메일쓰기(보낸 사람의 정보를 먼저 저장함. 여기서 emlNo이 중요함)+(받는사람2과 참조인3명의 정보도 메일테이블에 저장함(메일분류번호(EML_CLSF_NO)로 구분됨))
+	/*
+		 write.jsp의 form데이터에서 옴..
+		 mailVO(before) : MailVO(emlNo=null, empNo=202301, emlTagNo=null, emlTagcol=null
+		 , rcvrYn=null, empNm=null, emlClsfNo=null
+		3)
+		, emlTtl=제목
+		4)
+		, emlCn=<p>내용</p>
+		, fileGroupNo=null, emlTrsmDt=null, emlImporYn=null, emlSndrNo=null
+		1) 받는사람 : 쉼표로 구분
+		, emailRcvrVOList=a@a.com,b@b.com
+		, prev=null, rslt=0
+		2) 참조 : 쉼표로 구분
+		, emailRcvrVOList=c@c.com,d@d.com,e@e.com
+		, emailRcvr=null
+		, emailRcvrVOList=null)
+		 */
+	-->
+
+	<insert id="writePost" parameterType="mailVO">
+		<selectKey resultType="String" order="BEFORE" keyProperty="emlNo">
+			SELECT NVL(SUBSTR(MAX(EML_NO),1,3),'EML') || TRIM(TO_CHAR(NVL(SUBSTR(MAX(EML_NO),4),0)+1,'0000')) FROM  EML
+		</selectKey>
+			INSERT INTO EML(EML_NO, EMP_NO, EML_TAG_NO, EML_CLSF_NO, EML_TTL, EML_CN, EML_TRSM_DT
+					<if test="emlImporYn!='' and emlImporYn!=null">
+					, EML_IMPOR_YN
+					</if>
+					, EML_SNDR_NO
+					<if test="fileGroupNo!='' and fileGroupNo!=null">
+					, FILE_GROUP_NO
+					</if>
+					)
+			VALUES(
+				#{emlNo}
+				,#{empNo},NULL,#{emlClsfNo},#{emlTtl},#{emlCn},SYSDATE
+				<if test="emlImporYn!='' and emlImporYn!=null">
+				,#{emlImporYn}
+				</if>
+				,(SELECT EMP_EML_ADDR FROM EMP WHERE EMP_NO=#{empNo})
+				<if test="fileGroupNo!='' and fileGroupNo!=null">
+				,#{fileGroupNo}
+				</if>
+				)
+	</insert>
+
+
+
+
+	<!-- 2. 메일 수신자 테이블 등록 -->
+	<insert id="insertEmailRcvr" parameterType="emailRcvrVO">
+		INSERT INTO EMAIL_RCVR(EML_RCVR_ADDR, EML_NO, EML_RCPTN_YN, EML_RCPTN_DT)
+		VALUES(#{emlRcvrAddr},#{emlNo},#{emlRcptnYn},sysdate)
+	</insert>
+
+
+	<!-- 보낸메일함 목록 띄우기 -->
+	<select id="send" parameterType="mailVO" resultMap="mailMap">
+		SELECT A.EML_NO, A.EMP_NO, A.EML_TAG_NO, A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT,
+		       LAG(A.EML_TRSM_DT) OVER(ORDER BY A.EML_TRSM_DT DESC) AS PREV,
+		       A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO, B.EML_RCPTN_YN,
+		       CASE WHEN B.EML_RCPTN_YN='Y' THEN '확인' ELSE '미확인' END AS RCVR_YN,
+		       (SELECT EMP_NM FROM EMP WHERE EMP_EML_ADDR=B.EML_RCVR_ADDR) AS RCVR,
+		        B.EML_RCVR_ADDR
+		FROM EML A, EMAIL_RCVR B
+		WHERE A.EMP_NO=#{empNo} AND A.EML_NO=B.EML_NO(+)
+		ORDER BY A.EML_TRSM_DT DESC
+	</select>
+
+	<resultMap type="mailVO" id="mailMap">
+		<result property="emlNo" column="EML_NO" />
+		<result property="empNo" column="EMP_NO" />
+		<result property="empNm" column="EMP_NM" />
+		<result property="emlTagNo" column="EML_TAG_NO" />
+		<result property="rcvrYn" column="RCVR_YN" />
+		<result property="emlClsfNo" column="EML_CLSF_NO" />
+		<result property="emlTtl" column="EML_TTL" />
+		<result property="emlCn" column="EML_CN" />
+		<result property="emlTrsmDt" column="EML_TRSM_DT" />
+		<result property="emlImporYn" column="EML_IMPOR_YN" />
+		<result property="emlSndrNo" column="EML_SNDR_NO" />
+		<result property="fileGroupNo" column="FILE_GROUP_NO" />
+		<result property="rslt" column="RSLT" />
+		<collection property="emailRcvrVOList" resultMap="emailRcvrMap"></collection>
+	</resultMap>
+
+	<resultMap type="emailRcvrVO" id="emailRcvrMap">
+		<result property="emlRcvrAddr" column="EML_RCVR_ADDR" />
+		<result property="rcvr" column="RCVR" />
+		<result property="emlNo" column="EML_NO" />
+		<result property="emlRcptnYn" column="EML_RCPTN_YN" />
+		<result property="emlRcptnDt" column="EML_RCPTN_DT" />
+	</resultMap>
+
+	<!-- 수신확인 목록 불러오기
+	EML : EMAIL_RCVR = 1 : N
+	-->
+	<select id="checkMail" parameterType="mailVO" resultMap="mailMap">
+		SELECT A.EML_NO, (SELECT EMP_NM FROM EMP B WHERE A.EMP_NO = B.EMP_NO) AS EMP_NM
+		        , A.EML_TAG_NO, A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT, A.EML_IMPOR_YN
+		        , A.EML_SNDR_NO, A.FILE_GROUP_NO
+		        , B.EML_RCVR_ADDR, B.EML_RCPTN_YN, B.EML_RCPTN_DT
+		FROM EML A, EMAIL_RCVR B
+		WHERE A.EML_NO = B.EML_NO
+		AND   A.EML_CLSF_NO='EML_CLSF02'
+	</select>
+
+	<!-- 받은메일 상세보기에서 삭제는 휴지통으로 이동 -->
+	<update id="delEml" parameterType="mailVO">
+		UPDATE EML
+		SET EML_CLSF_NO='EML_CLSF03'
+		WHERE EML_NO=#{emlNo}
+	</update>
+
+	<!-- 중요메일함으로 이동 -->
+	<update id="sendImp" parameterType="string">
+		UPDATE EML
+		SET EML_CLSF_NO='EML_CLSF02'
+		WHERE EML_NO=#{emlNo}
+	</update>
+
+	<!-- 휴지통에 있는 메일 목록 조회 -->
+	<select id="selectTrash" parameterType="mailVO" resultType="mailVO">
+	WITH T AS(
+		    SELECT A.EML_NO, FN_GET_EMP_NM(A.EMP_NO) AS EMP_NM, (SELECT EML_TAG_COLOR FROM EML_TAG WHERE EML_TAG_NO = A.EML_TAG_NO) AS EML_TAG_COL,
+		       A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT,
+		       LAG(A.EML_TRSM_DT) OVER(ORDER BY A.EML_TRSM_DT DESC) AS PREV,
+		       A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO, B.EML_RCPTN_YN,
+		       CASE WHEN B.EML_RCPTN_YN='Y' THEN '확인' ELSE '미확인' END AS RCVR_YN,
+		       FN_GET_EMPNO_EMLADDR(B.EML_RCVR_ADDR) AS RCVR
+		    FROM EML A, EMAIL_RCVR B
+		    WHERE B.EML_RCVR_ADDR=(SELECT EMP_EML_ADDR FROM EMP WHERE EMP_NO=#{empNo}) AND A.EML_NO=B.EML_NO
+              AND EML_CLSF_NO='EML_CLSF03'
+		    ORDER BY A.EML_TRSM_DT DESC
+		)
+		SELECT
+		    T.EML_NO, T.EMP_NM, T.EML_TAG_COL, T.EML_CLSF_NO, T.EML_TTL,
+		    T.EML_CN, T.EML_TRSM_DT,  T.PREV,
+		    CASE WHEN TO_CHAR(T.EML_TRSM_DT,'YYYY-MM-DD') != TO_CHAR(NVL(T.PREV,'1234-12-12'),'YYYY-MM-DD') THEN 1
+		        ELSE 0
+		    END RSLT,
+		    T.EML_IMPOR_YN, T.EML_SNDR_NO, T.FILE_GROUP_NO,T.RCVR_YN, T.RCVR
+		FROM T
+
+<!-- 		SELECT EML_NO, EMP_NO, EML_TAG_NO, EML_CLSF_NO, EML_TTL, EML_CN, EML_TRSM_DT, EML_IMPOR_YN, EML_SNDR_NO, FILE_GROUP_NO -->
+<!-- 		  FROM EML -->
+<!-- 		WHERE EML_CLSF_NO='EML_CLSF03' AND EMP_NO=#{empNo} -->
+	</select>
+
+	<!-- 받은메일 목록에서 다중 업데이트(삭제한것처럼 보임.) -->
+	<update id="delTrashPost" parameterType="mailVO">
+		UPDATE EML SET EML_CLSF_NO='EML_CLSF03'
+		<![CDATA[
+		WHERE 1<>1
+		]]>
+		<choose>
+			<when test="emlNoArray.length>0">
+				OR EML_NO IN
+				<foreach collection="emlNoArray" item="eml" separator="," open="(" close=")">
+					#{eml}
+				</foreach>
+			</when>
+		</choose>
+	</update>
+
+	<!-- 휴지통에서 다중 삭제  -->
+	<update id="delPost" parameterType="mailVO">
+		UPDATE EML SET EML_CLSF_NO='EML_CLSF04'
+		<![CDATA[
+		WHERE 1<>1
+		]]>
+		<choose>
+			<when test="emlNoArray.length>0">
+				OR EML_NO IN
+				<foreach collection="emlNoArray" item="eml" separator="," open="(" close=")">
+					#{eml}
+				</foreach>
+			</when>
+		</choose>
+	</update>
+
+	<!-- 휴지통에서 받은메일함으로 복원(이동) -->
+	<update id="resetPost" parameterType="mailVO">
+		UPDATE EML SET EML_CLSF_NO='EML_CLSF01'
+		<![CDATA[
+		WHERE 1<>1
+		]]>
+		<choose>
+			<when test="emlNoArray.length>0">
+				OR EML_NO IN
+				<foreach collection="emlNoArray" item="eml" separator="," open="(" close=")">
+					#{eml}
+				</foreach>
+			</when>
+		</choose>
+		AND EMP_NO = #{empNo}
+	</update>
+
+	<!-- 중요메일함 list -->
+	<select id="impEmlList" resultType="mailVO">
+		WITH T AS(
+		    SELECT A.EML_NO, FN_GET_EMP_NM(A.EMP_NO) AS EMP_NM, (SELECT EML_TAG_COLOR FROM EML_TAG WHERE EML_TAG_NO = A.EML_TAG_NO) AS EML_TAG_COL,
+		       A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT AS EML_DT_STR,
+		       LAG(A.EML_TRSM_DT) OVER(ORDER BY A.EML_TRSM_DT DESC) AS PREV,
+		       A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO, B.EML_RCPTN_YN,
+		       CASE WHEN B.EML_RCPTN_YN='Y' THEN '확인' ELSE '미확인' END AS RCVR_YN,
+		       FN_GET_EMPNO_EMLADDR(B.EML_RCVR_ADDR) AS RCVR
+		    FROM EML A, EMAIL_RCVR B
+		    WHERE B.EML_RCVR_ADDR=(SELECT EMP_EML_ADDR FROM EMP WHERE EMP_NO=#{empNo}) AND A.EML_NO=B.EML_NO
+                     AND EML_CLSF_NO='EML_CLSF02'
+		    ORDER BY A.EML_TRSM_DT DESC
+		)
+		SELECT
+		    T.EML_NO, T.EMP_NM, T.EML_TAG_COL, T.EML_CLSF_NO, T.EML_TTL,
+		    T.EML_CN, T.EML_DT_STR,  T.PREV,
+		    CASE WHEN TO_CHAR(T.EML_TRSM_DT,'YYYY-MM-DD') != TO_CHAR(NVL(T.PREV,'1234-12-12'),'YYYY-MM-DD') THEN 1
+		        ELSE 0
+		    END RSLT,
+		    T.EML_IMPOR_YN, T.EML_SNDR_NO, T.FILE_GROUP_NO,T.RCVR_YN, T.RCVR
+		FROM T
+	</select>
+
+
+	<!-- 메일 선택한 태그 update  -->
+	<update id="insertTag" parameterType="mailVO">
+		UPDATE EML
+		SET    EML_TAG_NO = #{emlTagNo}
+		WHERE  EML_NO = #{emlNo}
+	</update>
+
+
+	<!--경영 태그 메일 목록 -->
+	<select id="managementTag" parameterType="mailVO" resultType="mailVO">
+		SELECT 	A.EML_NO, A.EMP_NO,
+					(SELECT EMP_NM FROM EMP C WHERE A.EMP_NO=C.EMP_NO GROUP BY C.EMP_NM) AS EMP_NM,
+				A.EML_TAG_NO, A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT,
+				A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO  ,
+				NVL(B.EML_RCPTN_YN,'N') AS RCVR_YN,
+				B.EML_RCVR_ADDR
+		FROM EML A, EMAIL_RCVR B
+		WHERE EML_TAG_NO='EML_TAG01' AND A.EML_NO = B.EML_NO(+) AND EML_RCVR_ADDR = #{emlRcvrAddr}
+	</select>
+
+	<!--참조 태그 메일 목록 -->
+	<select id="referenceTag" parameterType="mailVO" resultType="mailVO">
+		SELECT 	A.EML_NO, A.EMP_NO,
+					(SELECT EMP_NM FROM EMP C WHERE A.EMP_NO=C.EMP_NO GROUP BY C.EMP_NM) AS EMP_NM,
+				A.EML_TAG_NO, A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT,
+				A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO  ,
+				NVL(B.EML_RCPTN_YN,'N') AS RCVR_YN,
+				B.EML_RCVR_ADDR
+		FROM EML A, EMAIL_RCVR B
+		WHERE EML_TAG_NO='EML_TAG02' AND A.EML_NO = B.EML_NO(+) AND EML_RCVR_ADDR = #{emlRcvrAddr}
+	</select>
+
+	<!--회계 태그 메일 목록 -->
+	<select id="accontingTag" parameterType="mailVO" resultType="mailVO">
+		SELECT 	A.EML_NO, A.EMP_NO,
+					(SELECT EMP_NM FROM EMP C WHERE A.EMP_NO=C.EMP_NO GROUP BY C.EMP_NM) AS EMP_NM,
+				A.EML_TAG_NO, A.EML_CLSF_NO, A.EML_TTL, A.EML_CN, A.EML_TRSM_DT,
+				A.EML_IMPOR_YN, A.EML_SNDR_NO, A.FILE_GROUP_NO  ,
+				NVL(B.EML_RCPTN_YN,'N') AS RCVR_YN,
+				B.EML_RCVR_ADDR
+		FROM EML A, EMAIL_RCVR B
+		WHERE EML_TAG_NO='EML_TAG03' AND A.EML_NO = B.EML_NO(+) AND EML_RCVR_ADDR = #{emlRcvrAddr}
+	</select>
+
+	<!-- 메일 수정 -->
+	<update id="mailModify" parameterType="mailVO">
+		UPDATE EML
+		   SET
+		   	<if test="fileGroupNo != null">
+				FILE_GROUP_NO=#{fileGroupNo},
+		   	</if>
+		   	<if test="emlTtl != null">
+				EML_TTL=#{emlTtl},
+		   	</if>
+		   	<if test="emlCn != null">
+				EML_CN=#{emlCn},
+		   	</if>
+		   EML_NO=EML_NO
+		WHERE EML_NO=#{emlNo}
+	</update>
+
+	<update id="readMail" parameterType="mailVO">
+		UPDATE EMAIL_RCVR
+		SET EML_RCPTN_YN='Y'
+		WHERE EML_NO=#{emlNo}
+	</update>
+
+	<!-- 오늘 온 메일의 수 -->
+	<select id="todayMailCnt" parameterType="empVO" resultType="int">
+		SELECT COUNT(*)
+		FROM EML A, EMAIL_RCVR B
+		WHERE A.EML_NO=B.EML_NO AND FN_GET_EMPNO_EMLADDR(B.EML_RCVR_ADDR)=#{empNo} AND TO_CHAR(A.EML_TRSM_DT,'YYYY-MM-DD')=TO_CHAR(SYSDATE,'YYYY-MM-DD')
+	</select>	
+	
+	
+
+</mapper>
+
+

@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.mapper.ArchiveMapper">
+
+	<sql id="Search">
+		<if test="searchType != null and searchType == 'arcOrgnlNm'">
+			AND (ARC_ORGNL_NM LIKE '%'||#{searchWord}||'%')
+		</if>
+		<if test="searchType != null and searchType == 'empNm'">
+			AND (EMP_NM LIKE '%'||#{searchWord}||'%')
+		</if>
+	</sql>
+
+
+<!-- 자료실에 자료 insert 하기  -->
+	<insert id="create" parameterType="java.util.List">
+	<selectKey resultType="String" order="BEFORE" keyProperty="arcNo">
+			SELECT NVL(SUBSTR(MAX(ARC_NO),1,3),'ARC')
+		    || TRIM(TO_CHAR(NVL(SUBSTR(MAX(ARC_NO),4),0)+1,'000'))
+			FROM ARC
+	</selectKey>
+		<foreach collection="list" item="item" index="index" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" ">
+            INTO ARC(ARC_NO, EMP_NO, ARC_ORGNL_NM, ARC_STRG_NM, ARC_FILE_SZ, ARC_TYPE, ARC_REG_YMD, ARC_GROUP_NM, ARC_DEL_FL, ARC_STRG_ADDR, ARC_THUMB)
+            VALUES(SUBSTR(#{arcNo},1,3) || TRIM(TO_CHAR(SUBSTR(#{arcNo},4) + (#{index}),'000')),
+            #{item.empNo},#{item.arcOrgnlNm},#{item.arcStrgNm},#{item.arcFileSz},#{item.arcType},SYSDATE,#{item.arcGroupNm},NULL,#{item.arcStrgAddr},#{item.arcThumb})
+		</foreach>
+	</insert>
+
+
+	<!-- 개인자료실의 자료의 개수 가져오기 -->
+	<select id="getPersonalTotal" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM(SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_REG_YMD,A.ARC_GROUP_NM,A.ARC_THUMB, X.EMP_NM
+		FROM ARC A, EMP X
+		WHERE A.ARC_GROUP_NM = 'ARC0001'
+		    AND   A.EMP_NO = #{empNo}
+		     AND A.ARC_DEL_FL IS NULL
+		    	<include refid="Search"></include>
+		    AND A.EMP_NO = X.EMP_NO
+		      AND A.EMP_NO = X.EMP_NO
+		      ORDER BY A.ARC_NO DESC)
+	</select>
+
+
+	<!-- 개인자료실의 자료 가져오기(페이징처리) -->
+	<select id="getPersonal" parameterType="pagingVO" resultType="hashMap">
+                     SELECT Z.*
+        FROM(SELECT ROWNUM AS RNUM,Y.*
+			FROM(SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_REG_YMD,A.ARC_GROUP_NM,A.ARC_THUMB,
+                       (SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND A.ARC_NO = T.ARC_NO) BOOKMARK,
+                X.EMP_NM
+			FROM ARC A, EMP X
+				WHERE A.ARC_GROUP_NM = 'ARC0001'
+			    AND   A.EMP_NO = #{empNo}
+			    AND A.ARC_DEL_FL IS NULL
+			    <include refid="Search"></include>
+	     		 AND A.EMP_NO = X.EMP_NO
+	             ORDER BY A.ARC_NO DESC) Y
+	             )Z
+	             <![CDATA[
+	              WHERE Z.RNUM >= #{startRow} AND Z.RNUM <= #{endRow}
+	 	    	]]>
+	</select>
+
+	<!-- 자료실의 자료를 삭제하기 -->
+	<update id="deleteFile" parameterType="hashMap">
+		UPDATE ARC
+		SET ARC_DEL_FL = 1
+		WHERE ARC_NO = #{arcNo}
+		     AND EMP_NO = #{empNO}
+	</update>
+
+	<!-- 공용자료실의 자료의 총 개수 count -->
+	<select id="getPublicTotal" parameterType="pagingVO" resultType="int">
+     SELECT COUNT(*)
+     FROM(SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_REG_YMD, A.ARC_GROUP_NM, A.ARC_DEL_FL, A.ARC_STRG_ADDR,
+            A.ARC_THUMB,B.EMP_NM
+     FROM ARC A, EMP B
+     WHERE A.EMP_NO = B.EMP_NO
+           AND A.ARC_GROUP_NM = 'ARC0003'
+           <include refid="Search"></include>
+           AND A.ARC_DEL_FL IS NULL)
+	</select>
+
+
+	<!-- 공용자료실 자료를 가져오기(페이징처리) -->
+	<select id="getPublic" parameterType="pagingVO" resultType="hashMap" >
+     SELECT Z.*
+        FROM(SELECT ROWNUM AS RNUM, X.*
+        FROM(SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_REG_YMD, A.ARC_GROUP_NM, A.ARC_DEL_FL, A.ARC_STRG_ADDR,
+         	   A.ARC_THUMB,
+         	   (SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND A.ARC_NO = T.ARC_NO) BOOKMARK, B.EMP_NM, C.DEPT_NM
+             FROM ARC A, EMP B, DEPT C
+             WHERE A.EMP_NO = B.EMP_NO
+                   AND A.ARC_GROUP_NM = 'ARC0003'
+                   AND B.DEPT_NO = C.DEPT_NO
+                   <include refid="Search"></include>
+                   AND A.ARC_DEL_FL IS NULL
+                   ORDER BY A.ARC_NO DESC) X
+                   )Z
+  	             <![CDATA[
+	              WHERE Z.RNUM >= #{startRow} AND Z.RNUM <= #{endRow}
+	 	    	]]>
+	</select>
+
+
+	<!-- 부서자료실의 자료의 총 개수 가져오기 -->
+	<select id="getDeptTotal" parameterType="pagingVO" resultType="int">
+        SELECT COUNT(*)
+		FROM (SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_REG_YMD, A.ARC_GROUP_NM, A.ARC_DEL_FL, A.ARC_STRG_ADDR, A.ARC_THUMB
+		           ,B.JBPS_NO, B.EMP_NM AS EMP_NM, B.DEPT_NO, C.DEPT_NM
+		   FROM ARC A
+		    INNER JOIN EMP B ON(A.EMP_NO=B.EMP_NO)
+		    INNER JOIN DEPT C ON(B.DEPT_NO = C.DEPT_NO)
+		   WHERE B.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO=#{empNo})
+		   	   <include refid="Search"></include>
+		   	   AND A.ARC_DEL_FL IS NULL
+		       AND A.ARC_GROUP_NM ='ARC0002')
+	</select>
+
+	<!-- 부서자료실 자료 가져오기(페이징처리) -->
+	<select id="getDept" parameterType="pagingVO" resultType="hashMap">
+		SELECT Z.*
+		FROM(SELECT ROWNUM AS RNUM, X.*
+		FROM (SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_REG_YMD, A.ARC_GROUP_NM, A.ARC_DEL_FL, A.ARC_STRG_ADDR, A.ARC_THUMB
+		           ,B.JBPS_NO, B.EMP_NM AS EMP_NM, B.DEPT_NO, C.DEPT_NM, (SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND A.ARC_NO = T.ARC_NO) BOOKMARK
+		   FROM ARC A
+		    INNER JOIN EMP B ON(A.EMP_NO=B.EMP_NO)
+		     INNER JOIN DEPT C ON(B.DEPT_NO = C.DEPT_NO)
+		   WHERE B.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO=#{empNo})
+		        <include refid="Search"></include>
+		        AND A.ARC_DEL_FL IS NULL
+		       AND A.ARC_GROUP_NM ='ARC0002'
+		       ORDER BY A.ARC_NO DESC) X
+		       )Z
+       	       	             <![CDATA[
+	              WHERE Z.RNUM >= #{startRow} AND Z.RNUM <= #{endRow}
+	 	    	]]>
+	</select>
+
+
+	<!-- 즐겨찾기(북마크)를 추가하는 메서드 -->
+	<insert id="createBookmark" parameterType="bookmarkVO">
+			<selectKey resultType="int" order="BEFORE" keyProperty="bookmarkNo">
+				SELECT (MAX(BOOKMARK_NO)+1) FROM BOOKMARK
+			</selectKey>
+
+			INSERT INTO BOOKMARK
+			(EMP_NO, PROJ_NO, ARC_NO, ADDR_NO, BOOKMARK_NO)
+			VALUES(#{empNo}, NULL, #{arcNo}, NULL, #{bookmarkNo})
+	</insert>
+
+
+	<!-- 즐겨찾는 자료실의 자료의 총 개수를 count하기 -->
+	<select id="getBookmarkTotal" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM(
+		SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_GROUP_NM, A.ARC_DEL_FL
+		FROM ARC A, BOOKMARK B
+		WHERE A.ARC_NO = B.ARC_NO
+		     AND B.EMP_NO = #{empNo}
+		     	<include refid="Search"></include>
+		     AND A.ARC_DEL_FL IS NULL
+		     ORDER BY A.ARC_NO DESC)
+	</select>
+
+	<!-- 즐겨찾는 자료실의 자료 가져오기(페이징처리) -->
+	<select id="getBookmark" parameterType="pagingVO" resultType="hashMap">
+			SELECT Z.*
+			FROM(SELECT ROWNUM AS RNUM, X.*
+			FROM(SELECT A.ARC_NO, A.EMP_NO, A.ARC_ORGNL_NM, A.ARC_STRG_NM, A.ARC_FILE_SZ, A.ARC_TYPE, A.ARC_GROUP_NM, A.ARC_DEL_FL, A.ARC_THUMB,
+				(SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND A.ARC_NO = T.ARC_NO) BOOKMARK , C.EMP_NM
+			FROM ARC A, BOOKMARK B, EMP C
+			WHERE A.ARC_NO = B.ARC_NO
+			     AND B.EMP_NO = #{empNo}
+			     AND A.ARC_DEL_FL IS NULL
+	             AND A.EMP_NO = C. EMP_NO
+	             	     	<include refid="Search"></include>
+			 ORDER BY A.ARC_NO DESC) X
+			     )Z
+			        <![CDATA[
+		              WHERE Z.RNUM >= #{startRow} AND Z.RNUM <= #{endRow}
+		 	    	]]>
+	</select>
+
+	<!--  즐겨찾기(북마크)를 삭제하기 -->
+	<delete id="deleteBookmark" parameterType="bookmarkVO">
+	        DELETE FROM BOOKMARK
+	        WHERE EMP_NO = #{empNo}
+	        AND ARC_NO = #{arcNo}
+	</delete>
+
+	<!-- 개인자료실의 모든 자료의 파일크기의 합 가져오기 -->
+	<select id="getPersonalUsage" parameterType="String" resultType="int">
+			SELECT NVL(SUM(ARC_FILE_SZ),0), COUNT(*) AS COUNT
+			FROM ARC
+			WHERE EMP_NO = #{empNo}
+				 AND ARC_DEL_FL IS NULL
+			     AND ARC_GROUP_NM = 'ARC0001'
+	</select>
+
+	<!-- 공용자료실의 모든 자료의 파일크기의 합을 가져오기 -->
+	<select id="getpublicUsage" resultType="int" >
+			SELECT NVL(SUM(ARC_FILE_SZ),0), COUNT(*) AS COUNT
+			FROM ARC
+			WHERE ARC_DEL_FL IS NULL
+				AND ARC_GROUP_NM = 'ARC0002'
+	</select>
+
+
+	<!-- 부서자료실의 모든 자료의 파일크기의 합을 가져오기 -->
+	<select id="getDeptUsage" parameterType="String" resultType="int">
+	SELECT NVL(SUM(A.ARC_FILE_SZ),0), COUNT(*) AS COUNT
+	FROM ARC A
+	 INNER JOIN EMP B ON(A.EMP_NO = B.EMP_NO)
+	 INNER JOIN DEPT C ON(B.DEPT_NO = C.DEPT_NO)
+	WHERE C.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO = #{empNo}
+	        AND A.ARC_DEL_FL IS NULL
+	      AND A.ARC_GROUP_NM ='ARC0002' )
+	</select>
+
+
+	<!-- 개인자료실 이미지의 총 개수와 그 파일크기의 합가져오기 -->
+	<select id="personalImage" parameterType="hashMap" resultType="hashMap">
+	SELECT NVL(SUM(ARC_FILE_SZ),0) AS PERSONALIMAGE, COUNT(*) AS COUNT
+	FROM ARC
+	WHERE EMP_NO = #{empNo}
+	     AND ARC_GROUP_NM = 'ARC0001'
+	     AND ARC_DEL_FL IS NULL
+	      AND ARC_TYPE LIKE '%'||#{parameter}||'%'
+	</select>
+
+
+	<!-- 부서자료실 이미지의 총 개수와 파일크기의 합 가져오기 -->
+	<select id="deptImage" parameterType="String" resultType="hashMap">
+	SELECT NVL(SUM(A.ARC_FILE_SZ),0) AS DEPTIMAGE, COUNT(*) AS COUNT
+	FROM ARC A
+	 INNER JOIN EMP B ON(A.EMP_NO = B.EMP_NO)
+	 INNER JOIN DEPT C ON(B.DEPT_NO = C.DEPT_NO)
+	WHERE C.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO = #{empNo}
+	      AND A.ARC_GROUP_NM ='ARC0002'
+	      AND A.ARC_DEL_FL IS NULL
+	      AND A.ARC_TYPE LIKE '%image%')
+	</select>
+
+
+	<!-- 공용자료실 이미지의 총 개수와 파일크기의 합 가져오기  -->
+	<select id="publicImage" resultType="hashMap">
+	SELECT NVL(SUM(ARC_FILE_SZ),0) AS PUBLICIMAGE, COUNT(*) AS COUNT
+	FROM ARC
+	WHERE  ARC_GROUP_NM = 'ARC0003'
+		  AND ARC_DEL_FL IS NULL
+	      AND ARC_TYPE LIKE '%image%'
+	</select>
+
+
+	<!-- 개인자료실의 문서의 총 개수와 파일크기의 합을 가져오기 -->
+	<select id="personalDoc" parameterType="String" resultType="hashMap">
+	SELECT NVL(SUM(ARC_FILE_SZ),0) AS PERSONALDOC, COUNT(*) AS COUNT
+	FROM ARC
+	WHERE EMP_NO = #{empNo}
+	     AND ARC_GROUP_NM = 'ARC0001'
+	     AND ARC_DEL_FL IS NULL
+	      AND ARC_TYPE LIKE '%txt%' OR ARC_TYPE LIKE '%hwp%' OR ARC_TYPE LIKE '%xls%' OR ARC_TYPE LIKE '%presentation%' OR ARC_TYPE LIKE '%cell%'
+	</select>
+
+
+	<!-- 부서자료실의 문서의 총 개수와 파일크기의 합을 가져오기 -->
+	<select id="deptDoc" parameterType="String" resultType="hashMap">
+	    SELECT NVL(SUM(A.ARC_FILE_SZ),0) AS DEPTDOC, COUNT(*) AS COUNT
+	FROM ARC A
+	 INNER JOIN EMP B ON(A.EMP_NO = B.EMP_NO)
+	 INNER JOIN DEPT C ON(B.DEPT_NO = C.DEPT_NO)
+	WHERE C.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO = #{empNo}
+	      AND A.ARC_GROUP_NM ='ARC0002'
+	      AND A.ARC_DEL_FL IS NULL)
+	  AND A.ARC_TYPE LIKE '%txt%' OR A.ARC_TYPE LIKE '%hwp%' OR A.ARC_TYPE LIKE '%xls%' OR A.ARC_TYPE LIKE '%presentation%' OR A.ARC_TYPE LIKE '%cell%'
+	</select>
+
+
+	<!-- 공용자료실의 문서의 총 개수와 파일크기의 합을 가져오기 -->
+	<select id="publicDoc" resultType="hashMap">
+	SELECT NVL(SUM(ARC_FILE_SZ),0) AS PUBLICDOC, COUNT(*) AS COUNT
+	FROM ARC
+	WHERE ARC_GROUP_NM ='ARC0003'
+		AND ARC_DEL_FL IS NULL
+	  AND ARC_TYPE LIKE '%txt%' OR ARC_TYPE LIKE '%hwp%' OR ARC_TYPE LIKE '%xls%' OR ARC_TYPE LIKE '%presentation%' OR ARC_TYPE LIKE '%cell%'
+	</select>
+
+
+	<!-- 개인자료실의 미디어자료의 총 개수와 파일크기의 합을 가져오기 -->
+	<select id="personalMedia" parameterType="String" resultType="hashMap">
+	SELECT NVL(SUM(ARC_FILE_SZ),0) AS PERSONALMEDIA, COUNT(*) AS COUNT
+	FROM ARC
+	WHERE EMP_NO = #{empNo}
+	     AND ARC_GROUP_NM = 'ARC0001'
+	      AND ARC_DEL_FL IS NULL
+	      AND ARC_TYPE LIKE '%video%'
+	</select>
+
+
+	<!-- 부서자료실의 미디어자료의 총 개수와 파일크기의 합을 가져오기 -->
+	<select id="deptMedia" parameterType="String" resultType="hashMap">
+	    SELECT NVL(SUM(A.ARC_FILE_SZ),0) AS DEPTMEDIA, COUNT(*) AS COUNT
+	FROM ARC A
+	 INNER JOIN EMP B ON(A.EMP_NO = B.EMP_NO)
+	 INNER JOIN DEPT C ON(B.DEPT_NO = C.DEPT_NO)
+	WHERE C.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO = #{empNo}
+	        AND A.ARC_DEL_FL IS NULL
+	      AND A.ARC_GROUP_NM ='ARC0002' )
+	      AND ARC_TYPE LIKE '%video%'
+	</select>
+
+	<!-- 공용자료실의 미디어자료의 총 개수와 파일크기의 합 가져오기 -->
+	<select id="publictMedia" resultType="hashMap">
+	SELECT NVL(SUM(ARC_FILE_SZ),0) AS PUBLICMEDIA, COUNT(*) AS COUNT
+	FROM ARC
+	WHERE ARC_GROUP_NM ='ARC0003'
+	     AND ARC_DEL_FL IS NULL
+	  AND ARC_TYPE LIKE '%video%'
+	</select>
+
+</mapper>

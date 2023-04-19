@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC 
+"-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" 
+"http://tiles.apache.org/dtds/tiles-config_3_0.dtd">
+<!-- tiles 설정 -->
+<tiles-definitions>
+
+    <!-- tiles 제외 시킨다 -->
+   <definition name="empty" template="/WEB-INF/template/empty.jsp">
+   		<put-attribute name="content" value=""/>
+   </definition>
+
+   <definition name="*/*.empty" extends="empty">
+   		<put-attribute name="content" value="/WEB-INF/views/{1}/{2}.jsp"/>
+   </definition>
+   
+    <!-- tiles 제외 시킨다 -->
+   <definition name="empty2" template="/WEB-INF/template/empty2.jsp">
+   		<put-attribute name="content" value=""/>
+   </definition>
+
+   <definition name="*/*.empty2" extends="empty2">
+   		<put-attribute name="content" value="/WEB-INF/views/{1}/{2}.jsp"/>
+   </definition>
+   
+       <!-- 캘린더 제외 시킨다 -->
+   <definition name="empty3" template="/WEB-INF/template/empty3.jsp">
+   		<put-attribute name="content" value=""/>
+   </definition>
+
+   <definition name="*/*.empty3" extends="empty3">
+   		<put-attribute name="content" value="/WEB-INF/views/{1}/{2}.jsp"/>
+   </definition>
+   
+   <!-- 관리자페이지 tiles -->
+   <definition name="admin-layout" template="/WEB-INF/admin/main.jsp">
+        <put-attribute name="header" value="/WEB-INF/admin/header.jsp" />
+	    <put-attribute name="aside" value="/WEB-INF/admin/aside.jsp" />
+	    <put-attribute name="body" value="" />
+        <put-attribute name="footer" value="/WEB-INF/admin/footer.jsp" />
+   </definition>
+
+   <definition name="*/*.admin" extends="admin-layout">
+   		<put-attribute name="body" value="/WEB-INF/views/{1}/{2}.jsp" />
+   </definition>
+   
+
+   <!-- main layout -->
+   <definition name="tiles-layout" template="/WEB-INF/views/tiles/index.jsp">
+      <put-attribute name="header" value="/WEB-INF/views/tiles/header.jsp" />
+      <put-attribute name="aside" value="/WEB-INF/views/tiles/aside.jsp" />
+      <put-attribute name="body" value="" />
+      <put-attribute name="footer" value="/WEB-INF/views/tiles/footer.jsp" />
+   </definition>
+   <!-- name의 */*은 body의 value에서 1과 2에 해당
+      controller에서 forwarding 시 return "1/2";
+
+	ex)      
+      mav.setViewName("book/create");
+      1에 book
+      2에 create가 들어가서
+      /WEB-INF/views/book/create.jsp로 조립됨
+      
+      전체적인 레이아웃은 index.jsp를 따라가고
+    body부분만 동적으로 처리되고 나머진 정적 처리
+    -->
+   <definition name="*/*" extends="tiles-layout">
+      <put-attribute name="body" value="/WEB-INF/views/{1}/{2}.jsp" />
+   </definition>
+
+   <!-- /////////////////////////////////////////////////////////////////////// -->
+   <definition name="tiles-layout2" template="/WEB-INF/views/tiles/index.jsp">
+      <put-attribute name="header" value="/WEB-INF/views/tiles/header.jsp" />
+      <put-attribute name="aside" value="/WEB-INF/views/tiles/aside.jsp" />
+      <put-attribute name="body" value="" />
+      <put-attribute name="footer" value="/WEB-INF/views/tiles/footer.jsp" />
+   </definition>
+   
+   <definition name="*" extends="tiles-layout2">
+      <put-attribute name="body" value="/WEB-INF/views/{1}.jsp" />
+   </definition>
+   
+   
+</tiles-definitions>

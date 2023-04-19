@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+
+<mapper namespace="kr.or.ddit.mapper.NoteMapper">
+
+	<!-- 받은쪽지함 목록 -->
+	<select id="recieveNtList" parameterType="noteVO" resultType="noteVO">
+<!-- 		SELECT ROW_NUMBER() OVER (ORDER BY MSG_NO DESC) RNUM, T.*
+		FROM (
+		        SELECT A.MSG_NO,
+		            (SELECT B.EMP_NM FROM EMP B WHERE A.EMP_NO_SNDPTY = B.EMP_NO) AS EMP_NM ,
+		             A.EMP_NO_RCVR, A.MSG_CN, A.MSG_DSPTCH_DT, A.MSG_CATE_TAG, A.MSG_CLSF_NO
+		        FROM MSG A
+		        WHERE EMP_NO_RCVR = #{empNoSndpty}
+		        		AND MSG_CLSF_NO='MSG_CLSF02'
+		    )T	  -->
+
+			SELECT ROW_NUMBER() OVER (ORDER BY MSG_NO DESC) RNUM, T.*
+			FROM (
+	                SELECT
+	                    A.MSG_NO
+	                    ,(SELECT B.EMP_NM FROM EMP B WHERE A.EMP_NO_SNDPTY = B.EMP_NO) AS SENDER
+	                    , A.MSG_CN, A.MSG_DSPTCH_DT, A.MSG_CATE_TAG, A.MSG_CLSF_NO, B.EMP_NO_RCVR
+	                    ,B.RCVR_MSG_NO
+	                FROM MSG A, MSG_RCVR B
+	                WHERE
+	                    B.EMP_NO_RCVR=#{empNoRcvr} AND A.MSG_NO=B.MSG_NO(+)  AND A.MSG_CLSF_NO='MSG_CLSF01'
+	            )T
+	</select>
+
+	<!-- 보낸쪽지함 목록 -->
+	<select id="sendNtList" parameterType="noteVO" resultType="noteVO">
+<!-- 		SELECT ROW_NUMBER() OVER (ORDER BY MSG_NO DESC) RNUM, T.* -->
+<!-- 		FROM ( -->
+<!-- 		        SELECT A.MSG_NO,          -->
+<!-- 		            A.EMP_NO_SNDPTY, -->
+<!-- 		            (SELECT B.EMP_NM FROM EMP B WHERE A.EMP_NO_RCVR = B.EMP_NO) AS EMP_NM ,             -->
+<!-- 		             A.EMP_NO_RCVR,  -->
+<!-- 		             A.MSG_CN, A.MSG_DSPTCH_DT, A.MSG_CATE_TAG, A.MSG_CLSF_NO -->
+<!-- 		        FROM MSG A -->
+<!-- 		        WHERE EMP_NO_SNDPTY = #{empNoSndpty} -->
+<!-- 		        		AND MSG_CLSF_NO='MSG_CLSF01' -->
+<!-- 		    )T -->
+			SELECT ROW_NUMBER() OVER (ORDER BY MSG_NO DESC) RNUM, T.*
+			FROM    (
+			        SELECT DISTINCT(A.MSG_NO), A.EMP_NO_SNDPTY, A.MSG_CN, A.MSG_DSPTCH_DT, A.MSG_CATE_TAG, A.MSG_CLSF_NO
+			               ,(SELECT C.EMP_NM FROM EMP C WHERE B.EMP_NO_RCVR = C.EMP_NO) AS RCVR
+			                ,B.EMP_NO_RCVR
+			        FROM MSG A, MSG_RCVR B
+			        WHERE EMP_NO_SNDPTY=#{empNoSndpty} AND MSG_CLSF_NO='MSG_CLSF01'
+			        		AND A.MSG_NO=B.MSG_NO
+			        )T
+	</select>
+
+	<select id="keepNtList" parameterType="noteVO" resultType="noteVO">
+		<!-- 임시보관함 목록 -->
+		SELECT ROW_NUMBER() OVER (ORDER BY MSG_NO DESC) RNUM, T.*
+		FROM (
+		        SELECT DISTINCT(A.MSG_NO)
+		        , EMP_NO_SNDPTY
+		        ,(SELECT C.EMP_NM FROM EMP C WHERE A.EMP_NO_SNDPTY = C.EMP_NO) AS SENDER
+		        ,(SELECT C.EMP_NM FROM EMP C WHERE B.EMP_NO_RCVR = C.EMP_NO) AS RCVR
+		         ,A.MSG_CN, A.MSG_DSPTCH_DT, A.MSG_CATE_TAG, A.MSG_CLSF_NO
+		        FROM MSG A, MSG_RCVR B
+		        WHERE MSG_CLSF_NO='MSG_CLSF02' AND A.MSG_NO=B.MSG_NO AND A.MSG_CLSF_NO='MSG_CLSF02' AND B.EMP_NO_RCVR =#{empNoRcvr}
+		     )T
+
+
+<!-- 			SELECT ROW_NUMBER() OVER (ORDER BY MSG_NO DESC) RNUM, T.* -->
+<!-- 			FROM ( -->
+<!-- 	                SELECT  -->
+<!-- 	                    A.MSG_NO -->
+<!-- 	                    ,(SELECT B.EMP_NM FROM EMP B WHERE A.EMP_NO_SNDPTY = B.EMP_NO) AS SENDER -->
+<!-- 	                    , A.MSG_CN, A.MSG_DSPTCH_DT, A.MSG_CATE_TAG, A.MSG_CLSF_NO, B.EMP_NO_RCVR -->
+<!-- 	                    ,B.RCVR_MSG_NO -->
+<!-- 	                FROM MSG A, MSG_RCVR B -->
+<!-- 	                WHERE -->
+<!-- 	                    B.EMP_NO_RCVR=#{empNoRcvr} AND A.MSG_NO=B.MSG_NO(+)  AND A.MSG_CLSF_NO='MSG_CLSF02' -->
+<!-- 	            )T -->
+	</select>
+
+	<!--  쪽지쓰기1(보낸) -->
+	<insert id="writeNote" parameterType="noteVO">
+		<selectKey resultType="string" order="BEFORE" keyProperty="msgNo">
+			SELECT NVL(SUBSTR(MAX(MSG_NO),1,3),'MSG')||NVL(TRIM(TO_CHAR(SUBSTR(MAX(MSG_NO),4)+1,'0000')),'0001')
+			FROM MSG
+<!-- 			SELECT SUBSTR(MAX(MSG_NO),1,3)||TRIM(TO_CHAR(SUBSTR(MAX(MSG_NO),4)+1,'0000'))  -->
+<!-- 			FROM MSG -->
+		</selectKey>
+		INSERT INTO MSG(MSG_NO, EMP_NO_SNDPTY, MSG_CN, MSG_DSPTCH_DT, MSG_CATE_TAG, MSG_CLSF_NO)
+		VALUES(#{msgNo},#{empNoSndpty},#{msgCn},SYSDATE,#{msgCateTag},'MSG_CLSF01')
+	</insert>
+	<!--  쪽지쓰기2(받는) -->
+	<insert id="writeNoteRcvr" parameterType="msgRcvrVO">
+		<selectKey resultType="string" order="BEFORE" keyProperty="rcvrMsgNo">
+			SELECT NVL(SUBSTR(MAX(RCVR_MSG_NO),1,7),'MSGRCVR')||NVL(TRIM(TO_CHAR(SUBSTR(MAX(RCVR_MSG_NO),8)+1,'0000')),'0001')
+			FROM MSG_RCVR
+		</selectKey>
+		INSERT INTO MSG_RCVR(RCVR_MSG_NO, MSG_NO, EMP_NO_RCVR)
+		VALUES(#{rcvrMsgNo},#{msgNo},#{empNoRcvr})
+	</insert>
+
+<!-- 		/** 다중체크박스 ajax로  처리 -->
+<!-- 	 * @param noteVO -->
+<!-- 	 * @return List<NoteVO> -->
+<!-- 	 */ -->
+<!-- 	public List<NoteVO> checkMsgNo(NoteVO noteVO); -->
+<!-- 	<insert id="checkMsgNo" parameterType="noteVO"> -->
+<!-- 		<selectKey resultType="string" order="BEFORE" keyProperty="msgNo"> -->
+<!-- 			SELECT SUBSTR(MAX(MSG_NO),1,3)||TRIM(TO_CHAR(SUBSTR(MAX(MSG_NO),4),'0000')) FROM MSG WHERE MSG_CLSF_NO='MSG_CLSF02' -->
+<!-- 		</selectKey> -->
+<!-- 		INSERT INTO MSG(MSG_NO, EMP_NO_SNDPTY, MSG_CN, MSG_DSPTCH_DT, MSG_CATE_TAG, MSG_CLSF_NO) -->
+<!-- 		VALUES (#{msgNo},#{empNoSndpty},#{msgCn},SYSDATE,#{msgCateTag},'MSG_CLSF02') -->
+<!-- 	</insert> -->
+
+	<!-- 보관함으로 저장(분류번호 상태값 변경) -->
+	<update id="changeStatus" parameterType="String">
+		UPDATE MSG
+		SET MSG_CLSF_NO='MSG_CLSF02'
+		WHERE MSG_NO=#{msgNo}
+	</update>
+
+
+<!-- 		/** 받은(임시)쪽지 상세보기 -->
+<!-- 	 * @param noteVO -->
+<!-- 	 * @return NoteVO -->
+<!-- 	 */ -->
+<!-- 	public NoteVO rcvNtDetail(NoteVO noteVO); -->
+	<!-- 쪽지 상세보기(받은/보관) -->
+	<select id="rcvNtDetail" parameterType="noteVO" resultType="noteVO">
+<!-- 		SELECT DISTINCT(A.MSG_NO) -->
+<!-- 		        ,(SELECT EMP_NM FROM EMP C WHERE A.EMP_NO_SNDPTY=C.EMP_NO) AS SENDER -->
+<!-- 		        ,A.EMP_NO_SNDPTY AS EMP_NO_SNDPTY -->
+<!-- 		        , A.MSG_CN, A.MSG_DSPTCH_DT -->
+<!-- 		        ,(SELECT EMP_NM FROM EMP C WHERE B.EMP_NO_RCVR=C.EMP_NO) AS RCVR -->
+<!-- 				,B.EMP_NO_RCVR -->
+<!-- 		FROM MSG A, MSG_RCVR B -->
+
+<!-- 		WHERE A.MSG_NO=#{msgNo} AND B.EMP_NO_RCVR=#{empNoRcvr} -->
+
+			SELECT A.MSG_NO
+	                ,FN_GET_EMP_NM(A.EMP_NO_SNDPTY) AS SENDER
+		        	,A.EMP_NO_SNDPTY
+			        , A.MSG_CN, A.MSG_DSPTCH_DT
+			        ,FN_GET_EMP_NM(B.EMP_NO_RCVR) AS RCVR
+					,B.EMP_NO_RCVR
+			FROM MSG A
+	        LEFT OUTER JOIN MSG_RCVR B ON(B.MSG_NO=A.MSG_NO)
+			WHERE A.MSG_NO=#{msgNo} AND B.EMP_NO_RCVR=#{empNoRcvr}
+	</select>
+
+
+	<!-- 쪽지 상세보기(보낸) -->
+	<select id="noteDetail" parameterType="noteVO" resultType="noteVO">
+<!-- 		SELECT DISTINCT(A.MSG_NO) -->
+<!-- 		        ,(SELECT EMP_NM FROM EMP C WHERE A.EMP_NO_SNDPTY=C.EMP_NO) AS SENDER -->
+<!-- 		        , A.MSG_CN, A.MSG_DSPTCH_DT -->
+<!-- 		        ,(SELECT EMP_NM FROM EMP C WHERE B.EMP_NO_RCVR=C.EMP_NO) AS RCVR -->
+
+<!-- 		FROM MSG A, MSG_RCVR B -->
+<!-- 		WHERE A.MSG_NO=#{msgNo} -->
+<!-- 		        AND A.MSG_NO=B.MSG_NO(+) -->
+<!-- 		        AND B.EMP_NO_RCVR=#{empNoRcvr} -->
+   			SELECT A.MSG_NO
+	                ,FN_GET_EMP_NM(A.EMP_NO_SNDPTY) AS SENDER
+			        ,A.EMP_NO_SNDPTY AS EMP_NO_SNDPTY
+			        , A.MSG_CN, A.MSG_DSPTCH_DT
+			        ,FN_GET_EMP_NM(B.EMP_NO_RCVR) AS RCVR
+					,B.EMP_NO_RCVR
+			FROM MSG A
+	        LEFT OUTER JOIN MSG_RCVR B ON(B.MSG_NO=A.MSG_NO)
+			WHERE A.MSG_NO=#{msgNo} AND B.EMP_NO_RCVR=#{empNoRcvr}
+	</select>
+
+	<!-- 다중삭제 -->
+	<delete id="deletePost" parameterType="noteVO">
+<!-- 		DELETE FROM MSG WHERE MSG_NO=#{msgNo} -->
+<!-- 		DELETE -->
+<!-- 		FROM MSG -->
+<!-- 		WHERE MSG_NO =  -->
+<!-- 		    (SELECT M.MSG_NO -->
+<!-- 		       FROM MSG M, MSG_RCVR R -->
+<!-- 		      WHERE R.MSG_NO = M.MSG_NO -->
+<!-- 		        AND M.MSG_NO=#{msgNo} AND R.RCVR_MSG_NO = #{rcvrMsgNo} -->
+<!-- 		      ) -->
+		DELETE 
+		FROM MSG
+		WHERE MSG_NO=#{msgNo}
+	</delete>
+
+	<!-- 받은메일함 상세보기의 답장(MSG테이블) -->
+	<insert id="reply" parameterType="noteVO">
+		<selectKey resultType="string" order="BEFORE" keyProperty="msgNo">
+			SELECT SUBSTR(MAX(MSG_NO),1,3)||TRIM(TO_CHAR(SUBSTR(MAX(MSG_NO),4)+1,'0000'))
+ 			FROM MSG
+		</selectKey>
+		INSERT INTO MSG(MSG_NO, EMP_NO_SNDPTY, MSG_CN, MSG_DSPTCH_DT, MSG_CATE_TAG, MSG_CLSF_NO)
+		VALUES(#{msgNo},#{empNoSndpty},#{msgCn},SYSDATE,#{msgCateTag},'MSG_CLSF01')
+	</insert>
+	<!-- 받은메일함 상세보기의 답장(MSG_RCVR테이블) -->
+	<insert id="replyScvr" parameterType="noteVO">
+		INSERT INTO MSG_RCVR(RCVR_MSG_NO, MSG_NO, EMP_NO_RCVR)
+		VALUES((SELECT NVL(SUBSTR(MAX(RCVR_MSG_NO),1,7),'MSGRCVR')||NVL(TRIM(TO_CHAR(SUBSTR(MAX(RCVR_MSG_NO),8)+1,'0000')),'0001')
+			FROM MSG_RCVR),#{msgNo},#{empNoRcvr})
+	</insert>
+	
+	<!-- 상세보기에서 삭제 -->
+	<delete id="detailDelete" parameterType="noteVO">
+		DELETE FROM MSG WHERE MSG_NO=#{msgNo}
+	</delete>
+	
+	<!-- no를 이용해서 내용찾기 -->
+	<select id="findCn" parameterType="noteVO" resultType="noteVO">
+		SELECT MSG_NO, EMP_NO_SNDPTY, MSG_CN, MSG_DSPTCH_DT, MSG_CATE_TAG, MSG_CLSF_NO
+		FROM MSG
+		WHERE MSG_NO = #{msgNo}
+	</select>
+
+
+
+
+</mapper>
+
+
+
+
+
+
+
+
+
+

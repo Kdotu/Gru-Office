@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.TodoMapper">
+
+ 	<resultMap id="todoMap" type="TodoVO" >
+		<id property="todoNo" column="TODO_NO" />
+		<result property="todoNm" column="TODO_NM" />
+		<result property="empNo" column="EMP_NO" />
+		
+		<collection property="chkVOList" ofType="chkVO" >
+			<id property="chkNo" column="CHK_NO" />
+			<result property="taskNo" column="TASK_NO" />
+			<result property="chkCn" column="CHK_CN" />
+			<result property="chkSsts" column="CHK_SSTS" />
+		</collection>
+		
+   </resultMap>
+
+	<select id="getTodo" parameterType="TodoVO" resultMap="todoMap">
+			SELECT 
+		    T.TODO_NO,
+		    T.TODO_NM,
+		    T.EMP_NO,
+		    C.CHK_NO,
+		    C.TASK_NO,
+		    C.CHK_CN,
+		    C.CHK_SSTS
+		FROM 
+		  TODO T 
+		  INNER JOIN CHK C ON T.TODO_NO = C.TODO_NO
+		WHERE 
+		  T.EMP_NO = #{empNo}
+		ORDER BY CHK_NO ASC
+	</select>
+	
+	<insert id="createTodo" parameterType="TodoVO">
+	    INSERT INTO TODO
+	    (
+	        TODO_NO, 
+	        TODO_NM, 
+	        EMP_NO
+	        )
+	     VALUES(
+	     (SELECT NVL(SUBSTR(MAX(TODO_NO),1,2), 'TO') 
+	        || TO_CHAR(NVL(SUBSTR(MAX(TODO_NO),3), '1000') + 1)
+	        FROM TODO),
+	        #{todoNm},
+	        #{empNo}
+	     )   
+	</insert>
+
+	<select id="selectMaxTodo" resultType="TodoVO">
+  		SELECT NVL(SUBSTR(MAX(TODO_NO),1,2), 'TO') 
+	        || TO_CHAR(NVL(SUBSTR(MAX(TODO_NO),3), '1000')) AS TODO_NO
+        FROM TODO
+	</select>
+	
+	<insert id="createChk" parameterType="chkVO">
+		INSERT INTO CHK
+	    (
+	        CHK_NO,
+			TODO_NO,
+			CHK_CN
+	        )
+	     VALUES(
+		    (SELECT NVL(MAX(CHK_NO)+ 1, '1000') 
+	        FROM CHK),
+	        #{todoNo},
+	        #{chkCn}
+	     )   
+	</insert>
+	
+	<delete id="deleteChk" parameterType="chkVO">
+		DELETE FROM CHK
+		WHERE CHK_NO = #{chkNo}
+	</delete>
+	
+	<delete id="deleteTodo" parameterType="TodoVO">
+		DELETE FROM TODO
+		WHERE TODO_NO = #{todoNo}
+	</delete>
+	
+	<update id="updateTodo" parameterType="TodoVO">
+		UPDATE TODO SET
+		    TODO_NM = #{todoNm}
+		WHERE TODO_NO = #{todoNo}
+	</update>
+	
+	<update id="updateChkYN" parameterType="chkVO">
+		UPDATE CHK SET
+		    CHK_SSTS = #{chkSsts}
+		WHERE CHK_NO = #{chkNo}
+	</update>
+	
+	<update id="updateChk" parameterType="chkVO">
+		UPDATE CHK SET
+		    CHK_CN = #{chkCn}
+		WHERE CHK_NO = #{chkNo}
+	</update>
+
+</mapper>

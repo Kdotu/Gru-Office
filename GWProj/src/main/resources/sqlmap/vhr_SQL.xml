@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.VhrMapper">
+
+<resultMap id="vhrResultMap" type="VhrVO">
+  <id column="VHR_NO" property="vhrNo" />
+  <result column="VHR_NM" property="vhrNm" />
+  <result column="VHR_CMP" property="vhrCmp" />
+  <result column="VHR_REG_NO" property="vhrRegNo" />
+  <result column="VHR_SORT" property="vhrSort" />
+  <result column="VHR_SZ" property="vhrSz" />
+  <result column="VHR_REG_DT" property="vhrRegDt" />
+  <result column="VHR_FUEL" property="vhrFuel" />
+  <result column="VHR_INFO" property="vhrInfo" />
+  <association property="fileGrVO" resultMap="fileGrResultMap"/>
+</resultMap>
+
+<resultMap id="fileGrResultMap" type="FileGrVO">
+  <id column="FILE_GROUP_NO" property="fileGroupNo" />
+  <result column="FILE_GROUP_NM" property="fileGroupNm" />
+  <collection property="filesList" ofType="FilesVO">
+    <id column="FILE_NO" property="fileNo"/>
+    <result column="FILE_ORGNL_NM" property="fileOrgnlNm"/>
+    <result column="FILE_STRG_NM" property="fileStrgNm"/>
+    <result column="FILE_STRG_ADDR" property="fileStrgAddr"/>
+    <result column="FILE_SZ" property="fileSz"/>
+    <result column="FILE_THUMB" property="fileThumb"/>
+    <result column="FILE_TYPE" property="fileType"/>
+  </collection>
+</resultMap>
+
+	<select id="getVhrList" resultType="vhrVO">
+		 SELECT VHR_NO,
+				VHR_NM,
+				VHR_CMP,
+				VHR_REG_NO,
+				VHR_SORT,
+				VHR_SZ,
+				VHR_REG_DT,
+				VHR_FUEL,
+				VHR_INFO
+		   FROM VHR
+	</select>
+
+	<select id="getVhr" parameterType="vhrVO" resultMap="vhrResultMap">
+		  SELECT 
+		  VHR.VHR_NO, 
+		  VHR.VHR_NM, 
+		  VHR.VHR_CMP, 
+		  VHR.VHR_REG_NO, 
+		  VHR.VHR_SORT, 
+		  VHR.VHR_SZ, 
+		  VHR.VHR_REG_DT, 
+		  VHR.VHR_FUEL, 
+		  VHR.VHR_INFO, 
+		  VHR.FILE_GROUP_NO,
+		  FILE_GR.FILE_GROUP_NM,
+		  FILES.FILE_NO, 
+		  FILES.FILE_ORGNL_NM, 
+		  FILES.FILE_STRG_NM, 
+		  FILES.FILE_STRG_ADDR, 
+		  FILES.FILE_SZ, 
+		  FILES.FILE_THUMB, 
+		  FILES.FILE_TYPE
+		  FROM VHR
+		  LEFT JOIN FILE_GR ON VHR.FILE_GROUP_NO = FILE_GR.FILE_GROUP_NO
+		  LEFT JOIN FILES ON VHR.FILE_GROUP_NO = FILES.FILE_GROUP_NO
+		  WHERE VHR.VHR_NO = #{vhrNo}
+	</select>
+
+<select id="getAllVhr" parameterType="vhrVO" resultMap="vhrResultMap">
+   SELECT 
+   VHR.VHR_NO, 
+   VHR.VHR_NM, 
+   VHR.VHR_CMP, 
+   VHR.VHR_REG_NO, 
+   VHR.VHR_SORT, 
+   VHR.VHR_SZ, 
+   VHR.VHR_REG_DT, 
+   VHR.VHR_FUEL, 
+   VHR.VHR_INFO, 
+   VHR.FILE_GROUP_NO,
+   FILE_GR.FILE_GROUP_NM,
+   FILES.FILE_NO, 
+   FILES.FILE_ORGNL_NM, 
+   FILES.FILE_STRG_NM, 
+   FILES.FILE_STRG_ADDR, 
+   FILES.FILE_SZ, 
+   FILES.FILE_THUMB, 
+   FILES.FILE_TYPE
+  FROM VHR
+  LEFT JOIN FILE_GR ON VHR.FILE_GROUP_NO = FILE_GR.FILE_GROUP_NO
+  LEFT JOIN FILES ON VHR.FILE_GROUP_NO = FILES.FILE_GROUP_NO
+</select>
+
+	<select id="getMtgrm" parameterType="mtgrmVO" resultType="mtgrmVO">
+		 SELECT MTGRM_NO,
+				MTGRM_INFO,
+				MTGRM_AVAR_PEO,
+				MTGRM_PROJ,
+				MTGRM_BO,
+				MTGRM_PC,
+				MTGRM_AIR,
+				MTGRM_AVAL_YN
+		   FROM MTGRM
+	</select>
+
+	<!--
+	VhrVO(vhrNo=4, vhrNm=마스터, vhrCmp=르노코리아, vhrRegNo=02머8888, vhrSort=Van
+	, vhrSz=대형, vhrRegDt=Thu Feb 10 00:00:00 KST 2022, vhrFuel=경유, vhrInfo= 색상: 회색)
+	 -->
+	<select id="getCarReserve" parameterType="vhrVO" resultType="vhrRsvtVO">
+		 SELECT
+			VHR_RSVT_NO,
+			VHR_NO,
+			FN_GET_EMP_NM(EMP_NO) AS EMP_NO,
+			VHR_RSVT_DT,
+			TO_CHAR(VHR_RSVT_BGNG_DT, 'YYYY-MM-DD"T"HH24:MI:SS') VHR_RSVT_BGNG_DT,
+			TO_CHAR(VHR_RSVT_END_DT, 'YYYY-MM-DD"T"HH24:MI:SS') VHR_RSVT_END_DT,
+			VHR_RSVT_SSTS
+		 FROM VHR_RSVT
+		 WHERE VHR_NO = #{vhrNo}
+	</select>
+
+	<select id="getMyresRoom" parameterType="roomRsvtVO" resultType="roomRsvtVO">
+		 SELECT
+			RSVT_NO,
+			FN_GET_ROOM_NM(MTGRM_NO) AS MTGRM_NO,
+			FN_GET_EMP_NM(#{empNo}) AS EMP_NO,
+			TO_CHAR(RSVT_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_DT,
+			TO_CHAR(RSVT_BGNG_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_BGNG_DT,
+			TO_CHAR(RSVT_END_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_END_DT
+		 FROM ROOM_RSVT
+		 WHERE EMP_NO = #{empNo}
+	</select>
+
+ 	<select id="getMyresVhr" parameterType="vhrRsvtVO" resultType="vhrRsvtVO">
+		 SELECT
+			VHR_RSVT_NO,
+			FN_GET_VHR_REG_NO(VHR_NO) AS VHR_NO,
+			EMP_NO,
+			VHR_RSVT_DT,
+			VHR_RSVT_BGNG_DT,
+			VHR_RSVT_END_DT,
+			VHR_RSVT_SSTS
+		 FROM VHR_RSVT
+		 WHERE EMP_NO = #{empNo}
+	</select>
+
+	<delete id="deleteRoomRes" parameterType="roomRsvtVO">
+		DELETE FROM ROOM_RSVT
+		WHERE RSVT_NO = #{rsvtNo}
+	</delete>
+
+	<select id="getVhrNo" resultType="String">
+			SELECT NVL(MAX(VHR_NO)+ 1, '1000')
+		    FROM VHR
+	</select>
+	
+	<insert id="createCar" parameterType="vhrVO">
+<!-- 		<selectKey resultType="String" keyProperty="vhrNo" order="BEFORE"> -->
+<!-- 			SELECT NVL(MAX(VHR_NO)+ 1, '1000') -->
+<!-- 		    FROM VHR -->
+<!-- 		</selectKey> -->
+	
+		INSERT INTO VHR
+	    (
+	        VHR_NO,
+	        VHR_REG_NO,
+	        VHR_SORT,
+	        VHR_SZ,
+	        VHR_REG_DT,
+	        VHR_FUEL,
+	        VHR_INFO,
+	        VHR_NM,
+	        VHR_CMP,
+	        FILE_GROUP_NO
+	    )
+	    values (
+	        #{vhrNo},
+	        #{vhrRegNo},
+	        #{vhrSort},
+	        #{vhrSz},
+	        SYSDATE,
+	        #{vhrFuel},
+	        #{vhrInfo},
+	        #{vhrNm},
+	        #{vhrCmp},
+	        #{fileGroupNo}
+	    )
+	</insert>
+
+	<insert id="createRoom" parameterType="mtgrmVO">
+		INSERT INTO MTGRM
+	    (
+	        MTGRM_NO,
+	        MTGRM_INFO,
+	        MTGRM_AVAR_PEO,
+	        MTGRM_PROJ,
+	        MTGRM_BO,
+	        MTGRM_PC,
+	        MTGRM_AIR
+	    )
+	    values (
+	        (SELECT NVL(MAX(MTGRM_NO)+ 1, '1000')
+		    FROM MTGRM),
+	        #{mtgrmInfo},
+	        #{mtgrmAvarPeo},
+	        #{mtgrmProj},
+	        #{mtgrmBo},
+	        #{mtgrmPc},
+	        #{mtgrmAir}
+	    )
+	</insert>
+
+	<update id="updateRoom" parameterType="mtgrmVO">
+		 UPDATE MTGRM SET
+	        	MTGRM_INFO = #{mtgrmInfo},
+	        	MTGRM_AVAR_PEO = #{mtgrmAvarPeo},
+	        	MTGRM_PROJ = #{mtgrmProj},
+	        	MTGRM_BO = #{mtgrmBo},
+	        	MTGRM_PC = #{mtgrmPc},
+	        	MTGRM_AIR = #{mtgrmAir},
+	        	MTGRM_AVAL_YN = #{mtgrmAvalYn}
+	      WHERE MTGRM_NO = #{mtgrmNo}
+	</update>
+
+	<update id="updateCar" parameterType="vhrVO">
+		 UPDATE VHR SET
+				VHR_REG_NO = #{vhrRegNo},
+				VHR_SORT = #{vhrSort},
+				VHR_SZ = #{vhrSz},
+				VHR_REG_DT = #{vhrRegDt},
+				VHR_FUEL = #{vhrFuel},
+				VHR_INFO = #{vhrInfo},
+				VHR_NM = #{vhrNm},
+				VHR_CMP = #{vhrCmp}
+	      WHERE VHR_NO = #{vhrNo}
+	</update>
+
+	<delete id="deleteRoom" parameterType="mtgrmVO">
+		DELETE FROM MTGRM
+		WHERE MTGRM_NO = #{mtgrmNo}
+	</delete>
+
+	<delete id="deleteCar" parameterType="vhrVO">
+		DELETE FROM VHR
+		WHERE VHR_NO = #{vhrNo}
+	</delete>
+
+	<delete id="deleteCarRes" parameterType="vhrRsvtVO">
+		DELETE FROM VHR_RSVT
+		WHERE VHR_RSVT_NO = #{vhrRsvtNo}
+	</delete>
+
+	<update id="updateCarRes" parameterType="vhrRsvtVO">
+		 UPDATE VHR_RSVT SET
+	        	VHR_RSVT_SSTS = #{vhrRsvtSsts}
+	      WHERE VHR_RSVT_NO = #{vhrRsvtNo}
+	</update>
+
+	<select id="getAllMyresRoom" resultType="roomRsvtVO">
+	     SELECT
+			RSVT_NO,
+			FN_GET_ROOM_NM(MTGRM_NO) AS MTGRM_NO,
+			FN_GET_EMP_NM(EMP_NO) AS EMP_NO,
+			TO_CHAR(RSVT_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_DT,
+			TO_CHAR(RSVT_BGNG_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_BGNG_DT,
+			TO_CHAR(RSVT_END_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_END_DT
+		 FROM ROOM_RSVT
+	</select>
+
+	<select id="getAllMyresVhr" resultType="vhrRsvtVO">
+		 SELECT VHR_RSVT_NO,
+				FN_GET_VHR_REG_NO(VHR_NO) AS VHR_NO,
+				FN_GET_EMP_NM(EMP_NO) AS EMP_NO,
+				VHR_RSVT_DT,
+				VHR_RSVT_BGNG_DT,
+				VHR_RSVT_END_DT,
+				VHR_RSVT_SSTS
+		   FROM VHR_RSVT
+		  WHERE VHR_RSVT_END_DT >= SYSDATE  
+	</select>
+	
+	<select id="getNotReturnMyresVhr" resultType="vhrRsvtVO">
+				 SELECT VHR_RSVT_NO,
+				FN_GET_VHR_REG_NO(VHR_NO) AS VHR_NO,
+				FN_GET_EMP_NM(EMP_NO) AS EMP_NO,
+				VHR_RSVT_DT,
+				VHR_RSVT_BGNG_DT,
+				VHR_RSVT_END_DT,
+				VHR_RSVT_SSTS
+		   FROM VHR_RSVT
+		  WHERE SYSDATE > VHR_RSVT_END_DT AND VHR_RSVT_SSTS != '반납'
+	</select>
+
+	<insert id="createCarReserve" parameterType="vhrRsvtVO">
+		INSERT INTO VHR_RSVT
+	    (
+	        VHR_RSVT_NO,
+			VHR_NO,
+			EMP_NO,
+			VHR_RSVT_DT,
+			VHR_RSVT_BGNG_DT,
+			VHR_RSVT_END_DT,
+			VHR_RSVT_SSTS
+	    )
+	    values (
+	        (SELECT NVL(MAX(VHR_RSVT_NO)+ 1, '1000')
+		    FROM VHR_RSVT),
+			#{vhrNo},
+			#{empNo},
+			SYSDATE,
+			#{vhrRsvtBgngDt},
+			#{vhrRsvtEndDt},
+			#{vhrRsvtSsts}
+	    )
+	</insert>
+
+	<insert id="createRoomReserve" parameterType="roomRsvtVO">
+		INSERT INTO ROOM_RSVT
+	    (
+	        RSVT_NO,
+			MTGRM_NO,
+			EMP_NO,
+			RSVT_DT,
+			RSVT_BGNG_DT,
+			RSVT_END_DT
+	    )
+	    values (
+	        (SELECT NVL(MAX(RSVT_NO)+ 1, '1000')
+		    FROM ROOM_RSVT),
+			#{mtgrmNo},
+			#{empNo},
+			SYSDATE,
+			TO_DATE(#{rsvtBgngDt},'YYYY-MM-DD HH24:MI'),
+			TO_DATE(#{rsvtEndDt},'YYYY-MM-DD HH24:MI')
+	    )
+	</insert>
+
+	<select id="getAllresRoomForDay" parameterType="String" resultType="roomRsvtVO">
+		SELECT
+			RSVT_NO,
+			FN_GET_ROOM_NM(MTGRM_NO) AS MTGRM_NO,
+			FN_GET_EMP_NM(EMP_NO) AS EMP_NO,
+			TO_CHAR(RSVT_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_DT,
+			TO_CHAR(RSVT_BGNG_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_BGNG_DT,
+			TO_CHAR(RSVT_END_DT, 'YYYY-MM-DD HH24:MI:SS') AS RSVT_END_DT
+		 FROM ROOM_RSVT
+         WHERE TO_CHAR(RSVT_BGNG_DT, 'YYYY-MM-DD') = #{today}
+	</select>
+	
+	<select id="resRoomTodayCount" parameterType="empVO" resultType="int">
+	   SELECT COUNT(RSVT_NO)
+		 FROM ROOM_RSVT
+        WHERE TO_CHAR(RSVT_BGNG_DT, 'YYYY-MM-DD') = TO_CHAR(SYSDATE,'YYYY-MM-DD') 
+          AND EMP_NO = #{empNo}
+	</select>
+	
+	<select id="resCarTodayList" parameterType="empVO" resultType="vhrRsvtVO">
+	   SELECT FN_GET_VHR_REG_NO(VHR_NO) AS VHR_NO,
+              VHR_RSVT_BGNG_DT,
+              VHR_RSVT_END_DT,
+              VHR_RSVT_SSTS
+		 FROM VHR_RSVT
+        WHERE TO_CHAR(VHR_RSVT_BGNG_DT, 'YYYY-MM-DD') >= TO_CHAR(SYSDATE,'YYYY-MM-DD')
+          AND TO_CHAR(SYSDATE + 7,'YYYY-MM-DD') >= TO_CHAR(VHR_RSVT_BGNG_DT, 'YYYY-MM-DD') 
+          AND EMP_NO = #{empNo}
+	</select>
+
+</mapper>

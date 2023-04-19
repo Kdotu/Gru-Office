@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.FileMapper">
+
+		<!-- fileGrVO : atrzLineInfoVO.getEdocVO().getFileGrVO() -->
+		<insert id="insertFileGr" parameterType="fileGrVO">
+			<selectKey resultType="String" order="BEFORE" keyProperty="fileGroupNo">
+                    SELECT NVL(SUBSTR(MAX(FILE_GROUP_NO),1,7),'FILE_GR')  
+				    || TRIM(TO_CHAR(NVL(SUBSTR(MAX(FILE_GROUP_NO),8),0)+1,'000'))
+					FROM FILE_GR
+			</selectKey>
+			INSERT INTO FILE_GR(FILE_GROUP_NO, FILE_GROUP_NM)
+			VALUES(#{fileGroupNo},#{fileGroupNm})
+		</insert>
+
+	<insert id="insertFiles" parameterType="java.util.List">
+		<selectKey resultType="String" order="BEFORE" keyProperty="fileNo">
+	        SELECT NVL(SUBSTR(MAX(FILE_NO),1,4),'FILE')  
+		    	|| TRIM(TO_CHAR(NVL(SUBSTR(MAX(FILE_NO),5),0)+1,'000'))
+			FROM FILES
+		</selectKey>
+		
+		<foreach collection="list" item="item" index="index" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" ">
+			INTO FILES(FILE_NO, FILE_GROUP_NO, FILE_ORGNL_NM, FILE_STRG_NM, FILE_STRG_ADDR, FILE_SZ, FILE_THUMB, FILE_TYPE)
+			VALUES(SUBSTR(#{fileNo},1,4) || TRIM(TO_CHAR(SUBSTR(#{fileNo},5) + (#{index}),'000')),#{item.fileGroupNo}, 
+				#{item.fileOrgnlNm},#{item.fileStrgNm},#{item.fileStrgAddr},#{item.fileSz},#{item.fileThumb},#{item.fileType})
+		</foreach>
+	</insert>
+
+<!-- 파일 그룹 번호를 입력하여 파일목록을 가져오는 메서드 -->
+<select id="getFilesList" parameterType="String" resultType="fileVO">
+	SELECT FILE_NO, FILE_GROUP_NO, FILE_ORGNL_NM, FILE_STRG_NM, FILE_STRG_ADDR, FILE_SZ, FILE_THUMB, FILE_TYPE
+	  FROM FILES
+	  WHERE FILE_GROUP_NO=#{fileGroupNo}
+</select>
+
+
+
+
+</mapper>

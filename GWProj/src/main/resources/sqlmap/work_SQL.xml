@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.WorkMapper">
+
+<!-- 출근 시 근태정보 insert -->
+<insert id="insertgw" parameterType="empVO" >
+INSERT INTO WORK_MNG (WORK_MNG_NO, EMP_NO, WORK_MNG_BGNG_DT, WORK_MNG_REG_YMD, WORK_MNG_DTL_CN)
+VALUES (
+    (SELECT NVL(MAX(WORK_MNG_NO),0)+1 FROM WORK_MNG),
+    #{empNo},
+    SYSDATE,
+    SYSDATE,
+    IS_LATE(SYSDATE)
+	)
+	<selectKey resultType="String" keyProperty="workMngDtlCn" order="AFTER">
+		SELECT FN_CD_CHANGE(work_mng_dtl_cn) AS work_mng_dtl_cn FROM WORK_MNG WHERE EMP_NO = #{empNo} 
+		AND TO_CHAR(WORK_MNG_REG_YMD,'YYYYMMDDHH24MISS') BETWEEN 
+		TO_CHAR(SYSDATE,'YYYYMMDD')||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959' 
+	</selectKey>
+</insert>
+
+
+<!-- 시연용 출근 데이터 insert -->
+<insert id="pptGoWork" parameterType="empVO" >
+UPDATE WORK_MNG 
+SET WORK_MNG_BGNG_DT = TO_DATE(TO_CHAR(SYSDATE, 'YYYY-MM-DD') || ' 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), 
+    WORK_MNG_DTL_CN = 'WDTL0006',
+    WORK_MNG_END_DT = NULL,
+    WORK_MNG_SSTS = 'WSSTS0005'
+WHERE TO_DATE(WORK_MNG_REG_YMD,'YYYY/MM/DD') = TO_DATE(SYSDATE,'YYYY/MM/DD') AND EMP_NO = #{empNo}
+</insert>
+
+
+<!-- 퇴근 시 근태정보 update, 근무시간에서 점심시간 1시간을 빼준 후 저장 -->
+<update id="insertgh" parameterType="empVO">
+  <![CDATA[
+   UPDATE WORK_MNG
+SET WORK_MNG_END_DT = SYSDATE,
+WORK_MNG_HR = CASE
+WHEN ROUND((SYSDATE - WORK_MNG_BGNG_DT)*24, 2)-1 < 0 THEN 0
+ELSE ROUND((SYSDATE - WORK_MNG_BGNG_DT)*24, 2)-1
+END,
+WORK_MNG_DTL_CN =
+CASE
+WHEN WORK_MNG_DTL_CN='WDTL0006' AND TO_CHAR(SYSDATE, 'HH24:MI') < '18:00' THEN 'WDTL0004'
+WHEN WORK_MNG_DTL_CN='WDTL0006' AND TO_CHAR(SYSDATE, 'HH24:MI') >= '18:00' THEN 'WDTL0001'
+WHEN WORK_MNG_DTL_CN='WDTL0002' AND TO_CHAR(SYSDATE, 'HH24:MI') < '18:00' THEN 'WDTL0004'
+WHEN WORK_MNG_DTL_CN='WDTL0002' AND TO_CHAR(SYSDATE, 'HH24:MI') >= '18:00' THEN 'WDTL0002'
+END
+WHERE EMP_NO = #{empNo} AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,8) = TO_CHAR(SYSDATE,'YYYYMMDD')
+  ]]>
+</update>
+
+<!-- 시연용 퇴근 정보 update -->
+<update id="pptGoHome" parameterType="empVO">
+ UPDATE WORK_MNG
+SET WORK_MNG_END_DT = TO_DATE(TO_CHAR(SYSDATE, 'YYYY-MM-DD') || ' 18:00:00', 'YYYY-MM-DD HH24:MI:SS'),
+WORK_MNG_HR = 8,
+WORK_MNG_DTL_CN = 'WDTL0001'
+WHERE EMP_NO = #{empNo} AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,8) = TO_CHAR(SYSDATE,'YYYYMMDD')
+</update>
+
+<!-- workAside에서 근무상태 변경 시 근태정보 update -->
+<update id="updateSsts" parameterType="workVO">
+UPDATE WORK_MNG
+SET WORK_MNG_SSTS = #{workMngSsts}
+WHERE EMP_NO = #{empNo}
+AND TO_CHAR(WORK_MNG_REG_YMD, 'YYYY/MM/DD') = TO_CHAR(SYSDATE, 'YYYY/MM/DD')
+</update>
+
+<!-- workAside에 출근시간/퇴근시간/근무상태 반환 -->
+<select id="selectTime" parameterType="empVO" resultType="empVO">
+SELECT NVL(
+       (SELECT TO_CHAR(WORK_MNG_BGNG_DT,'HH24:MI:SS') AS WORK_MNG_BGNG_DT
+        FROM WORK_MNG 
+        WHERE EMP_NO= #{empNo} AND TO_CHAR(WORK_MNG_REG_YMD,'YYYYMMDDHH24MISS') BETWEEN TO_CHAR(SYSDATE,'YYYYMMDD')||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959' ), '00:00:00') AS WORK_MNG_BGNG_DT,
+        NVL(
+       (SELECT TO_CHAR(WORK_MNG_END_DT,'HH24:MI:SS') AS WORK_MNG_END_DT
+        FROM WORK_MNG 
+        WHERE EMP_NO= #{empNo} AND TO_CHAR(WORK_MNG_REG_YMD,'YYYYMMDDHH24MISS') BETWEEN TO_CHAR(SYSDATE,'YYYYMMDD')||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959'), '00:00:00') AS WORK_MNG_END_DT,
+        FN_CD_CHANGE(NVL((SELECT WORK_MNG_SSTS FROM WORK_MNG WHERE EMP_NO=#{empNo} AND TO_CHAR(WORK_MNG_REG_YMD,'YYYYMMDDHH24MISS') BETWEEN TO_CHAR(SYSDATE,'YYYYMMDD')||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959'),'WSSTS0005')) AS WORK_MNG_SSTS
+FROM EMP A
+WHERE A.EMP_NO = #{empNo}
+</select>
+
+<!-- 출퇴근버튼 중복클릭 방지 (이미 데이터 있는지 여부 확인) -->
+<select id="countWork" parameterType="workVO" resultType="workVO">
+SELECT COUNT(*) AS WORK_MNG_NO, WORK_MNG_END_DT FROM WORK_MNG WHERE EMP_NO= #{empNo}  
+AND TO_CHAR(WORK_MNG_REG_YMD,'YYYYMMDDHH24MISS') BETWEEN TO_CHAR(SYSDATE,'YYYYMMDD')||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959'
+GROUP BY WORK_MNG_END_DT
+</select>
+
+<!-- 소속부서명과 상위부서 이름 반환 -->
+<select id="getTeam" parameterType="empVO" resultType="empVO">
+SELECT A.DEPT_NM
+      ,NVL((SELECT DEPT_NM FROM DEPT WHERE DEPT_NO = (SELECT up_dept_no FROM DEPT WHERE DEPT_NO = #{deptNo})),'회사') AS UP_DEPT_NM
+FROM DEPT A, EMP B
+WHERE A.DEPT_NO = B.DEPT_NO
+AND B.EMP_NO = #{empNo}
+</select>
+
+<!-- 내 근태현황 페이지 _ 달에 해당하는 모든 날짜의 근태 정보 반환  
+map : {dt=20230321, month=202303, empNo=202301}
+-->
+<select id="MonthWork" parameterType="HashMap" resultType="Work2VO">
+
+SELECT A.WEEK_NUM, TO_CHAR(A.DATES, 'DD | DAY') AS DATES, A.WEEK_NO
+     , NVL(LAG(A.WEEK_NO) OVER(ORDER BY A.DATES), 0) BEF_WEEK_NO
+     , B.EMP_NO, NVL(TO_CHAR(B.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT
+     , NVL(TO_CHAR(B.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, NVL(B.WORK_MNG_HR,0) WORK_MNG_HR, B.WORK_MNG_REG_YMD, NVL(FN_CD_CHANGE(B.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+FROM   
+(
+    SELECT TO_CHAR(DATES, 'YYYY-MM WW') AS WEEK_NUM,
+           DATES,
+           TRUNC((DATES - TRUNC(DATES, 'MM')) / 7) + 1 AS WEEK_NO
+    FROM (
+      SELECT  DATES
+      FROM    CALENDARS
+      WHERE   TO_CHAR(DATES,'YYYYMMDD') LIKE #{month} || '%'
+    )
+) A,
+(
+    SELECT * FROM WORK_MNG
+    WHERE EMP_NO = #{empNo}
+) B
+WHERE  TO_CHAR(A.DATES,'YYYY-MM-DD') = TO_CHAR(B.WORK_MNG_REG_YMD(+),'YYYY-MM-DD')
+ORDER BY A.DATES
+
+</select>
+
+<!-- 주별 누적근무 시간 -->
+<select id="getWeekSum" parameterType="HashMap" resultType="work2VO">
+<![CDATA[
+SELECT U.WEEK_NO, TO_CHAR(TRUNC(U.WORK_MNG_HR * 3600 / 3600), 'FM99990') || 'h ' || 
+  TO_CHAR(TRUNC(MOD(U.WORK_MNG_HR * 3600, 3600) / 60), 'FM00') || 'm ' || 
+  TO_CHAR(MOD(U.WORK_MNG_HR * 3600, 60), 'FM00') || 's' AS RESULT 
+FROM 
+(
+    WITH T
+    AS(
+        SELECT A.WEEK_NUM, TO_CHAR(A.DATES, 'DD | DAY') AS DATES, A.WEEK_NO
+             , NVL(LAG(A.WEEK_NO) OVER(ORDER BY A.DATES), 0) BEF_WEEK_NO
+             , B.EMP_NO, NVL(TO_CHAR(B.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT
+             , NVL(TO_CHAR(B.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, NVL(B.WORK_MNG_HR,0) WORK_MNG_HR, B.WORK_MNG_REG_YMD, NVL(FN_CD_CHANGE(B.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+        FROM   
+        (
+            SELECT TO_CHAR(DATES, 'YYYY-MM WW') AS WEEK_NUM,
+                   DATES,
+                   TRUNC((DATES - TRUNC(DATES, 'MM')) / 7) + 1 AS WEEK_NO
+            FROM (
+              SELECT  DATES
+              FROM    CALENDARS
+              WHERE   TO_CHAR(DATES,'YYYYMMDD') LIKE #{month} || '%'
+            )
+        ) A,
+        (
+            SELECT * FROM WORK_MNG
+            WHERE EMP_NO = #{empNo}
+        ) B
+        WHERE  TO_CHAR(A.DATES,'YYYY-MM-DD') = TO_CHAR(B.WORK_MNG_REG_YMD(+),'YYYY-MM-DD')
+    )
+    SELECT T.WEEK_NO, SUM(T.WORK_MNG_HR) WORK_MNG_HR
+    FROM   T
+    GROUP BY T.WEEK_NO
+) U
+ORDER BY 1
+]]>
+</select>
+
+<!-- 주별 누적근무 시간 -->
+<select id="thisWeekSum" parameterType="HashMap" resultType="work2VO">
+<![CDATA[
+SELECT U.WEEK_NO, TO_CHAR(TRUNC(U.WORK_MNG_HR * 3600 / 3600), 'FM99990') || 'h ' || 
+  TO_CHAR(TRUNC(MOD(U.WORK_MNG_HR * 3600, 3600) / 60), 'FM00') || 'm ' || 
+  TO_CHAR(MOD(U.WORK_MNG_HR * 3600, 60), 'FM00') || 's' AS RESULT 
+FROM 
+(
+    WITH T
+    AS(
+        SELECT A.WEEK_NUM, TO_CHAR(A.DATES, 'DD | DAY') AS DATES, A.WEEK_NO
+             , NVL(LAG(A.WEEK_NO) OVER(ORDER BY A.DATES), 0) BEF_WEEK_NO
+             , B.EMP_NO, NVL(TO_CHAR(B.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT
+             , NVL(TO_CHAR(B.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, NVL(B.WORK_MNG_HR,0) WORK_MNG_HR, B.WORK_MNG_REG_YMD, NVL(FN_CD_CHANGE(B.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+        FROM   
+        (
+            SELECT TO_CHAR(DATES, 'YYYY-MM WW') AS WEEK_NUM,
+                   DATES,
+                   TRUNC((DATES - TRUNC(DATES, 'MM')) / 7) + 1 AS WEEK_NO
+            FROM (
+              SELECT  DATES
+              FROM    CALENDARS
+              WHERE   TO_CHAR(DATES,'YYYYMMDD') LIKE #{month} || '%'
+            )
+        ) A,
+        (
+            SELECT * FROM WORK_MNG
+            WHERE EMP_NO = #{empNo}
+        ) B
+        WHERE  TO_CHAR(A.DATES,'YYYY-MM-DD') = TO_CHAR(B.WORK_MNG_REG_YMD(+),'YYYY-MM-DD')
+        AND WEEK_NO = #{weekNo}
+    )
+    SELECT T.WEEK_NO, SUM(T.WORK_MNG_HR) WORK_MNG_HR
+    FROM   T
+    GROUP BY T.WEEK_NO
+) U
+ORDER BY 1
+]]>
+</select>
+
+<!-- 구하고자 하는 달의 전체 누적 근무시간 -->
+<select id="getMonthWT" parameterType="HashMap" resultType="workVO">
+SELECT 
+  TO_CHAR(TRUNC((SUM(WORK_MNG_HR) * 3600) / 3600), 'FM99990') || 'h ' || 
+  TO_CHAR(TRUNC(MOD((SUM(WORK_MNG_HR) * 3600), 3600) / 60), 'FM00') || 'm ' || 
+  TO_CHAR(MOD((SUM(WORK_MNG_HR) * 3600), 60), 'FM00') || 's' AS RESULT 
+FROM WORK_MNG 
+WHERE EMP_NO = #{empNo} AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}
+</select>
+
+<!-- 사원별 근태 통계  -->
+<select id="getMonthCNT" parameterType="HashMap" resultType="HashMap">
+SELECT 
+TO_CHAR((SELECT COUNT(*) FROM WORK_MNG WHERE WORK_MNG_DTL_CN = 'WDTL0002' AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month} 
+AND EMP_NO = #{empNo})) AS "지각",
+TO_CHAR((SELECT COUNT(*) FROM WORK_MNG WHERE WORK_MNG_DTL_CN = 'WDTL0001' AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month} 
+AND EMP_NO = #{empNo})) AS "정상근무",
+TO_CHAR((SELECT COUNT(*) FROM WORK_MNG WHERE WORK_MNG_DTL_CN = 'WDTL0003' AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month} 
+AND EMP_NO = #{empNo})) AS "휴가",
+TO_CHAR((SELECT COUNT(*) FROM WORK_MNG WHERE WORK_MNG_DTL_CN = 'WDTL0004' AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month} 
+AND EMP_NO = #{empNo})) AS "조퇴",
+TO_CHAR((SELECT COUNT(*) FROM WORK_MNG WHERE WORK_MNG_DTL_CN = 'WDTL0005' AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month} 
+AND EMP_NO = #{empNo})) AS "결근" 
+FROM DUAL
+</select>
+
+<!-- 해당부서 인원수 반환 -->
+<select id="getDeptPerson" parameterType="HashMap" resultType="HashMap">
+SELECT TO_CHAR(COUNT(*)) AS RESULT FROM EMP WHERE DEPT_NO = #{deptNo}
+</select>
+
+<!-- 오늘날짜기준 monthly 부서별 근태 통계  -->
+<select id="TeamMonth" parameterType="HashMap" resultType="HashMap">
+SELECT 
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS EMPTY
+FROM DUAL
+</select>
+
+<!-- 구하고자하는 달의 부서별 근태통계   --> 
+<select id="TeamMonthCNT" parameterType="HashMap" resultType="HashMap">
+SELECT 
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EMPTY
+FROM DUAL
+</select>
+
+<!-- 부서별 최신순으로 부서원의 근태정보 출력 -->
+<select id="getDeptStatis" parameterType="HashMap" resultType="workVO" >
+  SELECT B.EMP_NM, 
+        C.JBPS_NM,
+        D.DEPT_NM, 
+        TO_CHAR(A.WORK_MNG_REG_YMD,'YYYY-MM-DD (DY)') AS WORK_MNG_REG_YMD, 
+        NVL(TO_CHAR(A.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT, 
+        NVL(TO_CHAR(A.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, 
+        NVL(FN_CD_CHANGE(A.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+ FROM WORK_MNG A, EMP B, JBPS C, DEPT D 
+ WHERE A.EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo}) 
+ AND A.EMP_NO = B.EMP_NO
+ AND B.JBPS_NO = C.JBPS_NO
+ AND B.DEPT_NO = D.DEPT_NO
+ AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')
+ ORDER BY  A.WORK_MNG_REG_YMD DESC
+</select>
+
+<!-- 구하고자 하는 달의 부서별 최신순으로 부서원의 근태정보 출력  -->
+<select id="getDept2" parameterType="HashMap" resultType="workVO">
+SELECT B.EMP_NM, 
+         C.JBPS_NM,
+         D.DEPT_NM, 
+         TO_CHAR(A.WORK_MNG_REG_YMD,'YYYY-MM-DD (DY)') AS WORK_MNG_REG_YMD,
+         NVL(TO_CHAR(A.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT, 
+         NVL(TO_CHAR(A.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, 
+         NVL(FN_CD_CHANGE(A.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+  FROM WORK_MNG A, EMP B, JBPS C, DEPT D 
+  WHERE A.EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo}) 
+  AND A.EMP_NO = B.EMP_NO
+  AND B.JBPS_NO = C.JBPS_NO
+  AND B.DEPT_NO = D.DEPT_NO
+  AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}
+  ORDER BY  A.WORK_MNG_REG_YMD DESC
+</select>
+
+<!-- 전자결재 최종 결재 난 것 중에 연차 정보 저장된 것 반환 -->
+<select id="getHoliInfo" parameterType="empVO" resultType="HashMap">
+SELECT TO_CHAR(HOLI_BGNG_YMD,'YYYY-MM-DD') AS HOLI_BGNG_YMD,
+       TO_CHAR(HOLI_END_YMD,'YYYY-MM-DD') AS HOLI_END_YMD,  
+       HOLI_APLY_CNT, 
+       FN_CD_CHANGE(HOLI_CLSF) AS HOLI_CLSF,
+       EMP_NM, 
+       DEPT_NM
+       FROM HOLI A, EDOC B, EMP C, DEPT D
+       WHERE B.EDOC_LAST_ATRZ_YN = 'Y'
+       AND B.EMP_NO = #{empNo}
+       AND A.EDOC_NO = B.EDOC_NO
+       AND B.EMP_NO = C.EMP_NO
+       AND C.DEPT_NO = D.DEPT_NO
+</select>
+
+<!-- 부서별 근태 현황 _ 주차에 해당하는 날짜별로 컬럼 생성 및 소속부서원 모두의 일별 누적근무시간 / 주별 누적근무시간 출력 -->
+<select id="getDeptWeek" parameterType="HashMap" resultType="work3VO">
+WITH T AS(
+    SELECT EMP_NM
+         , JBPS_NM
+         , D.DEPT_NO
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day1} THEN C.WORK_MNG_HR END),0) AS MON1
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day2} THEN C.WORK_MNG_HR END),0) AS TUE2
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day3} THEN C.WORK_MNG_HR END),0) AS WED3
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day4} THEN C.WORK_MNG_HR END),0) AS THU4
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day5} THEN C.WORK_MNG_HR END),0) AS FRI5
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day6} THEN C.WORK_MNG_HR END),0) AS SAT6
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day7} THEN C.WORK_MNG_HR END),0) AS SUN7
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day1} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS MON
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day2} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS TUE
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day3} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS WED
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day4} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS THU
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day5} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS FRI
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day6} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS SAT
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day7} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS SUN
+    FROM EMP A, JBPS B, Work_Mng C, DEPT D
+    WHERE A.JBPS_NO = B.JBPS_NO
+    AND   A.EMP_NO = C.EMP_NO
+    AND   A.DEPT_NO = D.DEPT_NO
+    AND   A.EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+    AND   TO_CHAR(C.WORK_MNG_REG_YMD,'YYYYMMDD') BETWEEN #{bgng} AND #{end}
+    GROUP BY EMP_NM
+         , JBPS_NM
+         , D.DEPT_NO
+)
+SELECT T.EMP_NM, T.JBPS_NM, T.DEPT_NO, T.MON, T.TUE, T.WED, T.THU, T.FRI, T.SAT, T.SUN, convert_to_hms(T.MON1 + T.TUE2 + T.WED3 + T.THU4 + T.FRI5 + T.SAT6 + T.SUN7) TOTAL
+FROM T
+</select>
+
+<!-- 부서별 근태현황_ 주별 누적근무시간을 특정시간 초과/ 미만으로 검색한 결과 반환 -->
+<select id="deptWorkSearch" parameterType="HashMap" resultType="work3VO">
+WITH T AS(
+    SELECT EMP_NM
+         , JBPS_NM
+         , D.DEPT_NO
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day1} THEN C.WORK_MNG_HR END),0) AS MON1
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day2} THEN C.WORK_MNG_HR END),0) AS TUE2
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day3} THEN C.WORK_MNG_HR END),0) AS WED3
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day4} THEN C.WORK_MNG_HR END),0) AS THU4
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day5} THEN C.WORK_MNG_HR END),0) AS FRI5
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day6} THEN C.WORK_MNG_HR END),0) AS SAT6
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day7} THEN C.WORK_MNG_HR END),0) AS SUN7
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day1} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS MON
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day2} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS TUE
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day3} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS WED
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day4} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS THU
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day5} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS FRI
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day6} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS SAT
+         , NVL(MAX(CASE WHEN TO_CHAR(C.WORK_MNG_REG_YMD,'dd') = #{day7} THEN convert_to_hms(C.WORK_MNG_HR) END),'0h 00m 00s') AS SUN
+    FROM EMP A, JBPS B, Work_Mng C, DEPT D
+    WHERE A.JBPS_NO = B.JBPS_NO
+    AND   A.EMP_NO = C.EMP_NO
+    AND   A.DEPT_NO = D.DEPT_NO
+    AND   A.EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = #{deptNo})
+    AND   TO_CHAR(C.WORK_MNG_REG_YMD,'YYYYMMDD') BETWEEN #{bgng} AND #{end}
+    GROUP BY EMP_NM
+         , JBPS_NM
+         , D.DEPT_NO
+)
+SELECT T.EMP_NM, T.JBPS_NM, T.DEPT_NO, T.MON, T.TUE, T.WED, T.THU, T.FRI, T.SAT, T.SUN, convert_to_hms(T.MON1 + T.TUE2 + T.WED3 + T.THU4 + T.FRI5 + T.SAT6 + T.SUN7) TOTAL
+FROM T WHERE (T.MON1 + T.TUE2 + T.WED3 + T.THU4 + T.FRI5 + T.SAT6 + T.SUN7) 
+<if test="choice == '초과'"><![CDATA[ > ]]></if> 
+<if test="choice == '미만'"><![CDATA[ < ]]></if> #{num}
+ORDER BY TOTAL
+</select>
+
+</mapper>

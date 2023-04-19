@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.OrgMapper">
+
+<select id="orgAdminEmp" resultType="empVO">
+	SELECT A.EMP_NO,
+       A.EMP_NM,
+       B.JBPS_NM
+    FROM EMP A, JBPS B 
+    WHERE A.JBPS_NO = B.JBPS_NO
+    AND B.JBPS_NO IN ('JBPS001', 'JBPS002')
+    ORDER BY B.JBPS_LV
+</select>
+
+
+<select id="orgEmp" resultType="empVO" parameterType="empVO">
+	SELECT A.EMP_NO,
+       A.EMP_NM,
+       B.JBPS_NM
+    FROM EMP A, JBPS B 
+    WHERE A.JBPS_NO = B.JBPS_NO
+    AND A.DEPT_NO = #{deptNo}
+    AND A.EMP_HDOF_YN = 'HDOF0001'
+    ORDER BY B.JBPS_LV
+</select>
+
+<select id="empModal" resultType="empVO" parameterType="empVO">
+	SELECT
+    A.EMP_NO, 
+    A.EMP_NM, 
+    B.DEPT_NM, 
+    C.JBPS_NM, 
+    A.EMP_MBL_TELNO, 
+    A.EMP_CO_TELNO, 
+    A.EMP_EML_ADDR,
+    (SELECT EMP_NM FROM EMP WHERE EMP_NO = (SELECT EMP_OGDP_CO FROM EMP WHERE EMP_NO= #{empNo})) AS EMP_OGDP_CO,
+    FN_GET_EMP_PROFILE(#{empNo}) AS EMP_PROFILE,
+    FN_CD_CHANGE(NVL((SELECT WORK_MNG_SSTS
+       FROM WORK_MNG 
+       WHERE EMP_NO= #{empNo}
+       AND TO_CHAR(WORK_MNG_REG_YMD,'YYYYMMDDHH24MISS') BETWEEN TO_CHAR(SYSDATE,'YYYYMMDD')||'000000' AND TO_CHAR(SYSDATE,'YYYYMMDD')||'235959'),'WSSTS0008')) AS WORK_MNG_SSTS
+FROM EMP A
+JOIN DEPT B ON A.DEPT_NO = B.DEPT_NO
+JOIN JBPS C ON A.JBPS_NO = C.JBPS_NO
+WHERE A.EMP_NO = #{empNo}
+</select>
+
+<select id="searchResult" parameterType="HashMap" resultType="HashMap">
+	SELECT 
+	   A.EMP_NO,
+       A.EMP_NM,
+       B.JBPS_NM,
+       C.DEPT_NM
+    FROM EMP A, JBPS B , DEPT C 
+    WHERE A.JBPS_NO = B.JBPS_NO
+    AND A.DEPT_NO = C.DEPT_NO 
+    AND A.EMP_HDOF_YN = 'HDOF0001'
+    AND (A.EMP_NM LIKE '%' ||  #{searchText} || '%' OR B.JBPS_NM LIKE '%' ||  #{searchText} || '%' OR C.DEPT_NM LIKE '%' ||  #{searchText} || '%')
+    ORDER BY B.JBPS_LV
+</select>
+
+<select id="searchCount" parameterType="HashMap">
+  SELECT COUNT(*) FROM EMP A, JBPS B, DEPT C 
+    WHERE A.JBPS_NO = B.JBPS_NO AND A.DEPT_NO = C.DEPT_NO AND A.EMP_HDOF_YN = 'HDOF0001'
+    AND A.EMP_NM OR B.JBPS_NM OR C.DEPT_NM LIKE '%' ||  #{searchText} || '%'
+</select>
+
+</mapper>

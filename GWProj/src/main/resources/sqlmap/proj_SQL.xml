@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.ProjMapper">
+
+	<!-- 프로젝트 : 참여자 = 1: N -->
+	<resultMap type="projVO" id="projPrtMap">
+		<result property="projNo"  column="PROJ_NO"/>
+		<result property="empNo"   column="EMP_NO"/>
+		<result property="empNm"   column="P_EMP_NO"/>
+		<result property="projTtl"  column="PROJ_TTL"/>
+		<result property="projRegYmd"  column="PROJ_REG_YMD"/>
+		<result property="projBgngYmd" column="PROJ_BGNG_YMD"/>
+		<result property="projEndYmd" column="PROJ_END_YMD"/>
+		<result property="projSsts"  column="PROJ_SSTS"/>
+		<result property="bookmark"  column="BOOKMARK"/>
+		<result property="cdNm"  column="CD_NM"/>
+		<collection property="projPrtpntVOList" resultMap="prtpntMap1"></collection>
+	</resultMap>
+
+	<resultMap type="prtpntVO" id="prtpntMap1">
+		<result property="prtpntNo" column="PRTPNT_NO"/>
+		<result property="empNo" column="EMP_NO"/>
+		<result property="pempno" column="PEMPNO"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empJbps" column="EMP_JBPS"/>
+		<result property="fileStrgNm"   column="FILE_STRG_NM"/>
+		<result property="calNo" column="CAL_NO"/>
+		<result property="taskNo" column="TASK_NO"/>
+		<result property="projNo"     column="PROJ_NO"/>
+		<result property="prtpntClsf"   column="PRTPNT_CLSF"/>
+		<result property="cdNm" column="CD_NM"/>
+	</resultMap>
+
+	<!-- 프로젝트 전체 목록 -->
+	<select id="projList" parameterType="string" resultMap="projPrtMap">
+		SELECT
+		A.PROJ_NO, A.EMP_NO, A.PROJ_TTL, A.PROJ_REG_YMD, A.PROJ_BGNG_YMD, TO_CHAR(A.PROJ_END_YMD,'YYYY-MM-DD') PROJ_END_YMD, A.PROJ_SSTS,
+		FN_CD_CHANGE(A.PROJ_SSTS) AS CD_NM,
+        (SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND T.PROJ_NO = A.PROJ_NO) BOOKMARK,
+        B.EMP_NO AS PEMPNO, FN_GET_EMP_NM(B.EMP_NO) AS EMP_NM, FN_GET_JBPS_NM(B.EMP_NO) AS EMP_JBPS, FN_GET_EMP_PROFILE(B.EMP_NO) AS FILE_STRG_NM, B.CAL_NO, B.TASK_NO, B.PROJ_NO, B.PRTPNT_CLSF
+		FROM PROJ A , PRTPNT B
+        WHERE A.PROJ_NO = B.PROJ_NO(+)
+        ORDER BY PROJ_END_YMD
+	</select>
+
+	<!-- 프로젝트 등록 -->
+	<insert id="createPost1" parameterType="projVO">
+		<selectKey resultType="String" order="BEFORE" keyProperty="projNo">
+			SELECT SUBSTR(MAX(PROJ_NO),1,4)
+			     || LPAD((SUBSTR(MAX(PROJ_NO),5) + 1),3,'0')
+			FROM PROJ
+		</selectKey>
+
+		INSERT INTO PROJ
+		(PROJ_NO, EMP_NO, PROJ_TTL, PROJ_BGNG_YMD, PROJ_END_YMD, PROJ_SSTS)
+		VALUES(#{projNo}, #{empNo}, #{projTtl}, SYSDATE, #{projEndYmd}, 'PROJ0001')
+	</insert>
+
+	<insert id="createPost2" parameterType="projVO">
+		INSERT INTO PRTPNT
+		(EMP_NO, PROJ_NO, PRTPNT_CLSF, PRTPNT_NO)
+		VALUES(#{empNo}, #{projNo}, 'PRIPNT0001', SEQ_PRTPNT_NO.NEXTVAL)
+	</insert>
+
+	<!-- 프로젝트 즐겨찾기 등록 -->
+	<insert id="createBookmark" parameterType="bookmarkVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="bookmarkNo">
+			SELECT (MAX(BOOKMARK_NO)+1) FROM BOOKMARK
+		</selectKey>
+
+		INSERT INTO BOOKMARK
+		(EMP_NO, PROJ_NO, ARC_NO, ADDR_NO, BOOKMARK_NO)
+		VALUES(#{empNo}, #{projNo}, NULL, NULL, #{bookmarkNo})
+	</insert>
+
+	<!-- 프로젝트 즐겨찾기 삭제 -->
+	<delete id="deleteBookmark" parameterType="bookmarkVO">
+		DELETE FROM BOOKMARK WHERE PROJ_NO=#{projNo} AND EMP_NO=#{empNo}
+	</delete>
+
+	<!-- 프로젝트 : 참여자 = 1: N -->
+	<resultMap type="projVO" id="projDetailMap">
+		<result property="projNo"  column="PROJ_NO"/>
+		<result property="empNo"   column="P_EMP_NO"/>
+		<result property="projTtl"  column="PROJ_TTL"/>
+		<result property="projRegYmd"  column="PROJ_REG_YMD"/>
+		<result property="projBgngYmd" column="PROJ_BGNG_YMD"/>
+		<result property="projEndYmd" column="PROJ_END_YMD"/>
+		<result property="projSsts"  column="PROJ_SSTS"/>
+		<result property="bookmark"  column="BOOKMARK"/>
+		<collection property="projPrtpntVOList" resultMap="prtpntMap2"></collection>
+	</resultMap>
+
+	<resultMap type="prtpntVO" id="prtpntMap2">
+		<result property="prtpntNo" column="PRTPNT_NO"/>
+		<result property="empNo" column="EMP_NO"/>
+		<result property="pempno" column="PEMPNO"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empJbps" column="EMP_JBPS"/>
+		<result property="fileStrgNm"   column="FILE_STRG_NM"/>
+		<result property="calNo" column="CAL_NO"/>
+		<result property="taskNo" column="TASK_NO"/>
+		<result property="projNo"     column="PROJ_NO"/>
+		<result property="prtpntClsf"   column="PRTPNT_CLSF"/>
+		<result property="cdNm" column="CD_NM"/>
+	</resultMap>
+
+	<!-- 프로젝트 상세 정보 -->
+	<select id="projDetail" resultMap="projDetailMap" parameterType="projVO">
+		SELECT A.PROJ_NO, FN_GET_EMP_NM(A.EMP_NO) AS P_EMP_NO, A.PROJ_TTL, A.PROJ_REG_YMD, A.PROJ_BGNG_YMD, TO_CHAR(A.PROJ_END_YMD,'YYYY-MM-DD') PROJ_END_YMD, A.PROJ_SSTS,
+	    (SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND T.PROJ_NO = A.PROJ_NO) BOOKMARK,
+	    B.EMP_NO AS PEMPNO, FN_GET_EMP_NM(B.EMP_NO) AS EMP_NM, FN_GET_JBPS_NM(B.EMP_NO) AS EMP_JBPS, FN_GET_EMP_PROFILE(B.EMP_NO) AS FILE_STRG_NM, B.CAL_NO, B.TASK_NO, B.PROJ_NO, B.PRTPNT_CLSF
+		FROM PROJ A , PRTPNT B
+        WHERE A.PROJ_NO = B.PROJ_NO(+)
+		AND A.PROJ_NO=#{projNo}
+	</select>
+
+	<!-- 프로젝트 : 태스크 = 1: N -->
+	<resultMap type="projVO" id="projTaskMap">
+		<result property="projNo"  column="PROJ_NO"/>
+		<result property="empNo"   column="P_EMP_NO"/>
+		<result property="projTtl"  column="PROJ_TTL"/>
+		<result property="projRegYmd"  column="PROJ_REG_YMD"/>
+		<result property="projBgngYmd" column="PROJ_BGNG_YMD"/>
+		<result property="projEndYmd" column="PROJ_END_YMD"/>
+		<result property="projSsts"  column="PROJ_SSTS"/>
+		<result property="bookmark"  column="BOOKMARK"/>
+		<collection property="projTaskVOList" resultMap="taskMap1"></collection>
+	</resultMap>
+
+	<resultMap type="taskVO" id="taskMap1">
+		<result property="taskNo" column="TASK_NO"/>
+		<result property="empNo" column="EMP_NO"/>
+		<result property="tempno" column="TEMPNO"/>
+		<result property="empJbps" column="EMP_JBPS"/>
+		<result property="fileStrgNm"   column="FILE_STRG_NM"/>
+		<result property="labelNo"     column="LABEL_NO"/>
+		<result property="labelCol"     column="LABEL_COL"/>
+		<result property="labelNm"     column="LABEL_NM"/>
+		<result property="projNo"   column="PROJ_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="taskTtl" column="TASK_TTL"/>
+		<result property="taskExpln" column="TASK_EXPLN"/>
+		<result property="taskWrtDt" column="TASK_WRT_DT"/>
+		<result property="taskBgngDt" column="TASK_BGNG_DT"/>
+		<result property="taskEndDt" column="TASK_END_DT"/>
+		<result property="taskSsts" column="TASK_SSTS"/>
+		<result property="allChk" column="ALL_CHK"/>
+		<result property="clearChk" column="CLEAR_CHK"/>
+	</resultMap>
+
+	<!-- 프로젝트 상세 화면에 띄울 태스크 상세정보 -->
+	<select id="projTaskDetail" parameterType="string" resultMap="projTaskMap">
+		SELECT A.PROJ_NO, FN_GET_EMP_NM(A.EMP_NO) AS P_EMP_NO, A.PROJ_TTL, A.PROJ_REG_YMD, A.PROJ_BGNG_YMD, TO_CHAR(A.PROJ_END_YMD,'YYYY-MM-DD') PROJ_END_YMD, A.PROJ_SSTS,
+	    (SELECT COUNT(*) FROM BOOKMARK T WHERE T.EMP_NO = #{empNo} AND T.PROJ_NO = A.PROJ_NO) BOOKMARK,
+	    B.TASK_NO, B.EMP_NO, FN_GET_EMP_NM(B.EMP_NO) AS TEMPNO, FN_GET_EMP_PROFILE(B.EMP_NO) AS FILE_STRG_NM, FN_GET_LABEL_COL(B.LABEL_NO) AS LABEL_COL, FN_GET_LABEL_NM(B.LABEL_NO) AS LABEL_NM, B.PROJ_NO, B.FILE_GROUP_NO, B.TASK_TTL, B.TASK_EXPLN, B.TASK_WRT_DT, B.TASK_BGNG_DT, TO_CHAR(B.TASK_END_DT,'YYYY-MM-DD') TASK_END_DT, FN_GET_TASK_ST(B.TASK_SSTS) AS TASK_SSTS,
+	    (SELECT NVL(COUNT(*),0) FROM CHK WHERE TASK_NO=B.TASK_NO) AS ALL_CHK,
+    	(SELECT NVL(COUNT(*),0) FROM CHK WHERE CHK_SSTS='Y' AND TASK_NO=B.TASK_NO) AS CLEAR_CHK
+		FROM PROJ A, TASK B
+		WHERE A.PROJ_NO = B.PROJ_NO(+)
+		AND A.PROJ_NO=#{projNo}
+	</select>
+
+	<!-- 프로젝트 참여자 목록 -->
+	<select id="prtList" parameterType="prtpntVO" resultType="prtpntVO">
+		SELECT EMP_NO, FN_GET_EMP_NM(EMP_NO) AS EMP_NM, FN_GET_JBPS_NM(EMP_NO) AS EMP_JBPS
+		FROM PRTPNT
+		WHERE PROJ_NO=#{projNo}
+		ORDER BY EMP_NM
+	</select>
+
+	<!-- 태스크 등록 -->
+	<insert id="taskMake" parameterType="taskVO">
+		<selectKey resultType="String" order="BEFORE" keyProperty="taskNo">
+			SELECT SUBSTR(MAX(TASK_NO),1,4)
+			     || LPAD((SUBSTR(MAX(TASK_NO),5) + 1),3,'0')
+			FROM TASK
+		</selectKey>
+
+		INSERT INTO TASK
+		(TASK_NO, EMP_NO, PROJ_NO, TASK_TTL, TASK_SSTS, TASK_END_DT)
+		VALUES(#{taskNo}, #{empNo}, #{projNo}, #{taskTtl}, 'TASK0001', #{taskEndDt})
+	</insert>
+
+	<!-- 태스크 담당자 등록 -->
+	<insert id="taskPrt" parameterType="taskVO">
+		INSERT INTO PRTPNT
+		(EMP_NO, TASK_NO, PRTPNT_CLSF, PRTPNT_NO)
+		VALUES(#{empNo}, #{taskNo}, 'PRIPNT0001', SEQ_PRTPNT_NO.NEXTVAL)
+	</insert>
+
+	<!-- 프로젝트 삭제 -->
+	<update id="projDelete1" parameterType="projVO">
+		UPDATE PROJ SET PROJ_SSTS='PROJ0003' WHERE PROJ_NO=#{projNo}
+	</update>
+
+	<delete id="projDelete2" parameterType="projVO">
+		DELETE FROM BOOKMARK WHERE PROJ_NO=#{projNo} AND EMP_NO=#{empNo}
+	</delete>
+
+	<!-- 프로젝트 복구 -->
+	<update id="remake" parameterType="projVO">
+		UPDATE PROJ SET PROJ_SSTS='PROJ0001' WHERE PROJ_NO=#{projNo}
+	</update>
+
+	<!-- 진행중인 태스크의 개수 -->
+	<select id="ingTask" parameterType="projVO" resultType="int">
+		SELECT COUNT(*) FROM TASK WHERE PROJ_NO=#{projNo} AND TASK_SSTS='TASK0002'
+	</select>
+
+	<!-- 태스크 통계 -->
+	<select id="taskCount" parameterType="projVO" resultType="taskCountVO">
+		SELECT
+		    (SELECT COUNT(*) FROM TASK WHERE PROJ_NO=#{projNo}) AS ALL_TASK,
+		    (SELECT COUNT(*) FROM TASK WHERE TASK_SSTS='TASK0001' AND PROJ_NO=#{projNo}) AS HOLD_TASK,
+		    (SELECT COUNT(*) FROM TASK WHERE TASK_SSTS='TASK0002' AND PROJ_NO=#{projNo}) AS ING_TASK,
+		    (SELECT COUNT(*) FROM TASK WHERE TASK_SSTS='TASK0003' AND PROJ_NO=#{projNo}) AS END_TASK
+		FROM DUAL
+	</select>
+
+	<!-- 전체 사원의 목록 -->
+	<select id="empList" resultType="empVO">
+		SELECT
+			EMP_NO, EMP_NM, FN_GET_JBPS_NM(EMP_NO) AS JBPS_NO, FN_GET_DEPT_NM(EMP_NO) AS DEPT_NO
+		FROM EMP
+		WHERE EMP_HDOF_YN!='COMP'
+	</select>
+
+	<!-- 프로젝트 참여자 등록 -->
+	<insert id="projPrtAdd" parameterType="prtpntVO">
+        <foreach collection="empNoArray" item="item" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" ">
+			INTO PRTPNT(EMP_NO,PROJ_NO,PRTPNT_CLSF,PRTPNT_NO)
+			VALUES (#{item}, #{projNo} , 'PRIPNT0002', GET_PRTPNT_NO())
+		</foreach>
+	 </insert>
+
+	<!-- 체크리스트 -->
+	<resultMap type="chkVO" id="chkMap1">
+		<result property="chkNo"  column="CHK_NO"/>
+		<result property="taskNo"   column="TASK_NO"/>
+		<result property="todoNo"  column="TODO_NO"/>
+		<result property="chkCn"  column="CHK_CN"/>
+		<result property="chkSsts" column="CHK_SSTS"/>
+	</resultMap>
+
+	<!-- 댓글 -->
+	<resultMap type="cmntVO" id="chkMap2">
+		<result property="cmntNo"  column="CMNT_NO"/>
+		<result property="empNo"   column="EMP_NO"/>
+		<result property="cEmpNo"   column="C_EMP_NO"/>
+		<result property="eFileStrgNm"   column="E_FILE_STRG_NM"/>
+		<result property="empTitle"   column="EMP_TITLE"/>
+		<result property="cmntClsf"  column="CMNT_CLSF"/>
+		<result property="cmntCn"  column="CMNT_CN"/>
+		<result property="cmntRegYmd" column="CMNT_REG_YMD"/>
+	</resultMap>
+
+	<!-- 파일 -->
+	<resultMap type="fileVO" id="fileMap">
+		<result property="fileNo" column="FILE_NO"></result>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"></result>
+		<result property="fileOrgnlNm" column="FILE_ORGNL_NM"></result>
+		<result property="fileStrgNm" column="FILE_STRG_NM"></result>
+		<result property="filePlace" column="FILE_PLACE"></result>
+		<result property="fileStrgAddr" column="FILE_STRG_ADDR"></result>
+		<result property="fileSz" column="FILE_SZ"></result>
+		<result property="fileThumb" column="FILE_THUMB"></result>
+		<result property="fileType" column="FILE_TYPE"></result>
+	</resultMap>
+
+	<!-- 태스크 : ?? = 1 : N -->
+	<resultMap type="taskVO" id="taskMap2">
+		<result property="taskNo" column="TASK_NO"/>
+		<result property="empNo" column="EMP_NO"/>
+		<result property="tempno" column="T_EMP_NO"/>
+		<result property="empJbps" column="EMP_JBPS"/>
+		<result property="fileStrgNm"   column="FILE_STRG_NM"/>
+		<result property="labelNo"     column="LABEL_NO"/>
+		<result property="projNo"   column="PROJ_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="taskTtl" column="TASK_TTL"/>
+		<result property="taskExpln" column="TASK_EXPLN"/>
+		<result property="taskWrtDt" column="TASK_WRT_DT"/>
+		<result property="taskBgngDt" column="TASK_BGNG_DT"/>
+		<result property="taskEndDt" column="TASK_END_DT"/>
+		<result property="taskSsts" column="TASK_SSTS"/>
+		<result property="countCmnt" column="COUNT_CMNT"/>
+		<result property="allChk" column="ALL_CHK"/>
+		<result property="clearChk" column="CLEAR_CHK"/>
+		<collection property="taskChkList" resultMap="chkMap1"></collection>
+		<collection property="taskCmntList" resultMap="chkMap2"></collection>
+		<collection property="fileGrVO.filesList" resultMap="fileMap"></collection>
+	</resultMap>
+
+	 <!-- 태스크 상세보기 -->
+	 <select id="taskDetail" parameterType="taskVO" resultMap="taskMap2">
+	 	SELECT A.TASK_NO, A.EMP_NO, FN_GET_EMP_NM(A.EMP_NO) AS T_EMP_NO, FN_GET_JBPS_NM(A.EMP_NO) AS EMP_JBPS, FN_GET_EMP_PROFILE(A.EMP_NO) AS FILE_STRG_NM, A.LABEL_NO, A.PROJ_NO, A.FILE_GROUP_NO, A.TASK_TTL,
+		       A.TASK_EXPLN, A.TASK_WRT_DT, A.TASK_BGNG_DT, TO_CHAR(A.TASK_END_DT,'YYYY/MM/DD') TASK_END_DT, FN_CD_CHANGE(A.TASK_SSTS) TASK_SSTS,
+		       (SELECT COUNT(*) FROM CMNT WHERE CMNT_CLSF=#{taskNo}) AS COUNT_CMNT,
+		       B.CHK_NO, B.TASK_NO, B.CHK_CN, B.CHK_SSTS,
+		       C.CMNT_NO, C.EMP_NO AS C_EMP_NO, FN_GET_EMP_NMJBPS(C.EMP_NO) EMP_TITLE, FN_GET_EMP_PROFILE(C.EMP_NO) AS E_FILE_STRG_NM, C.CMNT_CLSF, C.CMNT_CN, TO_CHAR(C.CMNT_REG_YMD, 'MM-DD HH24:MI') AS CMNT_REG_YMD,
+		       F.FILE_NO, F.FILE_GROUP_NO, F.FILE_ORGNL_NM, F.FILE_STRG_NM AS FILE_PLACE, F.FILE_STRG_ADDR, F.FILE_SZ, F.FILE_THUMB, F.FILE_TYPE
+		FROM TASK A, CHK B, CMNT C, FILES F
+		WHERE A.TASK_NO=#{taskNo} AND A.TASK_NO=B.TASK_NO(+) AND A.TASK_NO=C.CMNT_CLSF(+)
+		      AND A.FILE_GROUP_NO=F.FILE_GROUP_NO(+)
+	 </select>
+
+	 <!-- 체크리스트 체크 -->
+	 <update id="chkY" parameterType="chkVO">
+	 	UPDATE CHK SET CHK_SSTS='Y' WHERE CHK_NO=#{chkNo}
+	 </update>
+
+	 <!-- 체크리스트 체크해제 -->
+	 <update id="chkN" parameterType="chkVO">
+	 	UPDATE CHK SET CHK_SSTS='N' WHERE CHK_NO=#{chkNo}
+	 </update>
+
+	 <!-- 체크리스트 등록 -->
+	 <insert id="addChkList" parameterType="chkVO">
+		 <selectKey resultType="String" order="BEFORE" keyProperty="chkNo">
+		 	SELECT MAX(CHK_NO)+1 FROM CHK
+		 </selectKey>
+	 	INSERT INTO CHK (CHK_NO, TASK_NO, CHK_CN, CHK_SSTS)
+	 	VALUES
+	 		(#{chkNo}, #{taskNo}, #{chkCn}, 'N')
+	 </insert>
+
+	 <!-- 체크리스트 삭제 -->
+	 <delete id="delChkList" parameterType="chkVO">
+	 	DELETE FROM CHK
+	 	WHERE CHK_NO = #{chkNo}
+	 </delete>
+
+	 <!-- 댓글 등록 -->
+	 <insert id="createCmnt" parameterType="cmntVO">
+	 	<selectKey resultType="int" order="BEFORE" keyProperty="cmntNo">
+		 	SELECT MAX(CMNT_NO)+1 FROM CMNT
+		 </selectKey>
+	 	INSERT INTO CMNT (CMNT_NO, EMP_NO, CMNT_CLSF, CMNT_CN)
+	 	VALUES
+	 		(#{cmntNo}, #{empNo}, #{cmntClsf}, #{cmntCn})
+	 </insert>
+
+	 <!-- 댓글 삭제 -->
+	 <delete id="delCmntList" parameterType="cmntVO">
+	 	DELETE FROM CMNT WHERE CMNT_NO=#{cmntNo}
+	 </delete>
+
+	 <!-- 댓글 수정 -->
+	 <update id="updateCmnt" parameterType="cmntVO">
+	 	UPDATE CMNT SET CMNT_CN=#{cmntCn}, CMNT_REG_YMD=SYSDATE WHERE CMNT_NO=#{cmntNo}
+	 </update>
+
+	 <!-- 태스크 상태 변경 -->
+	 <update id="updateSsts" parameterType="taskVO">
+	 	UPDATE TASK SET TASK_SSTS=#{taskSsts} WHERE TASK_NO=#{taskNo}
+	 </update>
+
+	 <!-- 태스크 설명 추가 -->
+	 <update id="createExp" parameterType="taskVO">
+	 	UPDATE TASK SET TASK_EXPLN=#{taskExpln} WHERE TASK_NO=#{taskNo}
+	 </update>
+
+	 <!-- 태스크 라벨 등록 -->
+	 <update id="createLabel" parameterType="taskVO">
+	 	UPDATE TASK SET LABEL_NO=#{labelNo} WHERE TASK_NO=#{taskNo}
+	 </update>
+
+	 <!-- 태스크 라벨 등록 -->
+	 <update id="taskUpdate" parameterType="taskVO">
+	 	UPDATE TASK SET FILE_GROUP_NO=#{fileGroupNo} WHERE TASK_NO=#{taskNo}
+	 </update>
+
+	 <!-- 파일 삭제 -->
+	 <delete id="deleteFile" parameterType="fileVO">
+	 	DELETE FROM FILES WHERE FILE_NO=#{fileNo}
+	 </delete>
+
+	<!-- 메인페이지 프로젝트 목록 -->
+	<select id="mainProjList" parameterType="empVO" resultType="projVO">
+		SELECT A.PROJ_TTL, A.PROJ_NO
+		FROM PROJ A, PRTPNT B
+		WHERE B.PROJ_NO=A.PROJ_NO AND B.EMP_NO=#{empNo}
+		ORDER BY A.PROJ_END_YMD
+	</select>
+</mapper>

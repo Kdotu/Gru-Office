@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.EmpMapper">
+
+
+ <resultMap type="empVO" id="empMap">
+   	<result property="empNo" 		column="EMP_NO" />
+   	<result property="jbpsNo" 		column="JBPS_NO" />
+   	<result property="jbpsNm" 		column="JBPS_NM" />
+   	<result property="deptNo" 		column="DEPT_NO" />
+   	<result property="deptNm" 		column="DEPT_NM" />
+   	<result property="empOgdpCo" 	column="EMP_OGDP_CO" />
+   	<result property="empOgdpCoNm" 	column="EMP_OGDP_CO_NM" />
+   	<result property="empPswd" 		column="EMP_PSWD" />
+   	<result property="empNm" 		column="EMP_NM" />
+   	<result property="empRrno" 		column="EMP_RRNO" />
+   	<result property="empBrdt" 		column="EMP_BRDT" />
+   	<result property="empGender" 	column="EMP_GENDER" />
+   	<result property="empMblTelno" 	column="EMP_MBL_TELNO" />
+   	<result property="empCoTelno" 	column="EMP_CO_TELNO" />
+   	<result property="empEmlAddr" 	column="EMP_EML_ADDR" />
+   	<result property="empZip" 		column="EMP_ZIP" />
+   	<result property="empAddr" 		column="EMP_ADDR" />
+   	<result property="empDaddr" 	column="EMP_DADDR" />
+   	<result property="empJncmpYmd" 	column="EMP_JNCMP_YMD" />
+   	<result property="empHdofYn" 	column="EMP_HDOF_YN" />
+   	<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD" />
+   	<result property="empCrtHoli" 	column="EMP_CRT_HOLI" />
+	<result property="fileGrVO.fileGroupNo" column="FILE_GROUP_NO"></result>
+   	<collection property="empAuthVOList" resultMap="empAuthMap" ></collection>
+	<collection property="fileGrVO.filesList" resultMap="fileMap"></collection>
+   </resultMap>
+
+   <resultMap type="authrtVO" id="empAuthMap">
+   	<result property="empNo" column="EMP_NO"/>
+   	<result property="authrtNo" column="AUTHRT_NO"/>
+   	<result property="authrtNm" column="AUTHRT_NM"/>
+   </resultMap>
+
+	<resultMap type="fileVO" id="fileMap">
+		<result property="fileNo" column="FILE_NO"></result>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"></result>
+		<result property="fileOrgnlNm" column="FILE_ORGNL_NM"></result>
+		<result property="fileStrgNm" column="FILE_STRG_NM"></result>
+		<result property="fileStrgAddr" column="FILE_STRG_ADDR"></result>
+		<result property="fileSz" column="FILE_SZ"></result>
+		<result property="fileThumb" column="FILE_THUMB"></result>
+		<result property="fileType" column="FILE_TYPE"></result>
+	</resultMap>
+
+	<!-- 로그인 -->
+	<select id="login" parameterType="empVO" resultMap="empMap">
+	SELECT A.EMP_NO,
+	        E.JBPS_NO,
+	        E.DEPT_NO,
+	        E.EMP_OGDP_CO,
+	        E.EMP_PSWD,
+	        E.EMP_NM,
+	        E.EMP_RRNO,
+	        E.EMP_BRDT,
+	        E.EMP_GENDER,
+	        E.EMP_MBL_TELNO,
+	        E.EMP_CO_TELNO,
+	        E.EMP_EML_ADDR,
+	        E.EMP_ZIP,
+	        E.EMP_ADDR,
+	        E.EMP_DADDR,
+	        E.EMP_JNCMP_YMD,
+	        E.EMP_HDOF_YN,
+	        E.EMP_RSGNTN_YMD,
+	        E.EMP_CRT_HOLI,
+	        E.FILE_GROUP_NO,
+	        A.AUTHRT_NO,
+	        A.AUTHRT_NM,
+            FN_GET_DEPT_NM(E.EMP_NO) AS DEPT_NM,
+            FN_GET_JBPS_NM(E.EMP_NO) AS JBPS_NM,
+            FN_GET_EMP_NM(E.EMP_OGDP_CO) AS EMP_OGDP_CO_NM,
+            F.FILE_NO, F.FILE_NO,F.FILE_GROUP_NO,
+            F.FILE_ORGNL_NM, F.FILE_STRG_NM, F.FILE_STRG_ADDR, F.FILE_SZ, F.FILE_THUMB, F.FILE_TYPE
+	  FROM EMP E LEFT OUTER JOIN AUTHRT A ON(E.EMP_NO=A.EMP_NO)
+        LEFT OUTER JOIN FILES F ON(E.FILE_GROUP_NO=F.FILE_GROUP_NO)
+		 WHERE A.EMP_NO=#{empNo}
+	</select>
+
+	<!-- 아이디 중복검사 -->
+	<select id="idCheck" parameterType="empVO" resultType="int">
+		SELECT
+			COUNT(EMP_NO)
+		  FROM EMP
+		 WHERE EMP_NO=#{empNo}
+	</select>
+
+	<!-- 이메일 주소로 ID/PW 찾기 -->
+	<select id="findInfo" parameterType="empVO" resultType="empVO">
+		SELECT
+	    	FILE_GROUP_NO ,
+			EMP_NO        ,
+			JBPS_NO       ,
+			DEPT_NO       ,
+			EMP_OGDP_CO   ,
+			EMP_PSWD      ,
+			EMP_NM        ,
+			EMP_RRNO      ,
+			EMP_BRDT      ,
+			EMP_GENDER    ,
+			EMP_MBL_TELNO ,
+			EMP_CO_TELNO  ,
+			EMP_EML_ADDR  ,
+			EMP_ZIP       ,
+			EMP_ADDR      ,
+			EMP_DADDR     ,
+			EMP_JNCMP_YMD ,
+			EMP_HDOF_YN   ,
+			EMP_RSGNTN_YMD,
+			EMP_CRT_HOLI
+		FROM EMP
+		WHERE EMP_EML_ADDR= #{empEmlAddr}
+	</select>
+
+	<!-- 사원번호를 입력하여 해당 사원의 정보 불러오기 -->
+	<select id="getEmpInfo" parameterType="String" resultType="empVO">
+		SELECT A.EMP_NO,
+		        E.JBPS_NO,
+		        E.DEPT_NO,
+		        E.EMP_OGDP_CO,
+		        E.EMP_PSWD,
+		        E.EMP_NM,
+		        E.EMP_RRNO,
+		        E.EMP_BRDT,
+		        E.EMP_GENDER,
+		        E.EMP_MBL_TELNO,
+		        E.EMP_CO_TELNO,
+		        E.EMP_EML_ADDR,
+		        E.EMP_ZIP,
+		        E.EMP_ADDR,
+		        E.EMP_DADDR,
+		        E.EMP_JNCMP_YMD,
+		        E.EMP_HDOF_YN,
+		        E.EMP_RSGNTN_YMD,
+		        E.EMP_CRT_HOLI,
+		        E.FILE_GROUP_NO,
+		        A.AUTHRT_NO,
+		        A.AUTHRT_NM,
+	            FN_GET_DEPT_NM(E.EMP_NO) AS DEPT_NM,
+	            FN_GET_JBPS_NM(E.EMP_NO) AS JBPS_NM,
+                F.FILE_NO, F.FILE_NO,F.FILE_GROUP_NO,
+                F.FILE_ORGNL_NM, F.FILE_STRG_NM, F.FILE_STRG_ADDR, F.FILE_SZ, F.FILE_THUMB, F.FILE_TYPE
+		 FROM EMP E LEFT OUTER JOIN AUTHRT A ON(E.EMP_NO=A.EMP_NO)
+         INNER JOIN FILES F ON(E.FILE_GROUP_NO=F.FILE_GROUP_NO)
+			 WHERE A.EMP_NO=#{empNo}
+	</select>
+
+	<!-- 회원가입 -->
+	<insert id="join" parameterType="empVO">
+		INSERT INTO EMP(
+			EMP_NO,
+			EMP_PSWD,
+			EMP_NM,
+			EMP_RRNO,
+			EMP_BRDT,
+			EMP_EML_ADDR,
+			EMP_ZIP,
+			EMP_ADDR,
+			EMP_DADDR,
+			EMP_JNCMP_YMD,
+			EMP_HDOF_YN
+			)
+		VALUES (
+			#{empNo},#{empPswd},#{empNm},#{empRrno},SYSDATE,
+			#{empEmlAddr},#{empZip},#{empAddr},#{empDaddr},#{empJncmpYmd},'COMP'
+		)
+	</insert>
+
+	<!-- 회원정보 수정 -->
+	<update id="modifyEmp" parameterType="empVO">
+	    UPDATE EMP
+	    SET
+	    <if test="jbpsNo != null">
+	        JBPS_NO = #{jbpsNo},
+	    </if>
+	    <if test="deptNo != null">
+	        DEPT_NO = #{deptNo},
+	    </if>
+	    <if test="empOgdpCo != null">
+	        EMP_OGDP_CO = #{empOgdpCo},
+	    </if>
+	    <if test="empPswd != null">
+	        EMP_PSWD = #{empPswd},
+	    </if>
+	    <if test="empNm != null">
+	        EMP_NM = #{empNm},
+	    </if>
+	    <if test="empRrno != null">
+	        EMP_RRNO = #{empRrno},
+	    </if>
+	    <if test="empBrdt != null">
+	        EMP_BRDT = #{empBrdt},
+	    </if>
+	    <if test="empGender != null">
+	        EMP_GENDER = #{empGender},
+	    </if>
+	    <if test="empMblTelno != null">
+	        EMP_MBL_TELNO = #{empMblTelno},
+	    </if>
+	    <if test="empCoTelno != null">
+	        EMP_CO_TELNO = #{empCoTelno},
+	    </if>
+	    <if test="empEmlAddr != null">
+	        EMP_EML_ADDR = #{empEmlAddr},
+	    </if>
+	    <if test="empZip != null">
+	        EMP_ZIP = #{empZip},
+	    </if>
+	    <if test="empAddr != null">
+	        EMP_ADDR = #{empAddr},
+	    </if>
+  		<if test="empDaddr != null">
+			EMP_DADDR     =#{empDaddr}     ,
+		</if>
+		<if test="empHdofYn != null">
+			EMP_HDOF_YN   =#{empHdofYn}    ,
+		</if>
+		<if test="empRsgntnYmd != null">
+			EMP_RSGNTN_YMD=#{empRsgntnYmd} ,
+		</if>
+		<if test="empCrtHoli gt 0">
+			EMP_CRT_HOLI  =#{empCrtHoli},
+		</if>
+		<if test="fileGroupNo != null">
+			FILE_GROUP_NO = #{fileGroupNo}
+		</if>
+
+		EMP_NO = EMP_NO
+	    WHERE EMP_NO = #{empNo}
+	</update>
+
+<!-- 회원가입한 관리자 권한 설정 -->
+	<insert id="authorizeEmp" parameterType="empVO">
+		INSERT ALL
+            INTO AUTHRT(AUTHRT_NO, EMP_NO, AUTHRT_NM)
+         VALUES(
+                (SELECT 'AUTH'||TRIM(TO_CHAR(SUBSTR(MAX(AUTHRT_NO),5)+1,'000')) FROM AUTHRT) ,#{empNo},'AUTH_MEM')
+            INTO AUTHRT(AUTHRT_NO, EMP_NO, AUTHRT_NM)
+        VALUES(
+                (SELECT 'AUTH'||TRIM(TO_CHAR(SUBSTR(MAX(AUTHRT_NO),5)+2,'000')) FROM AUTHRT) ,#{empNo},'AUTH_MID')
+            INTO AUTHRT(AUTHRT_NO, EMP_NO, AUTHRT_NM)
+        VALUES(
+                (SELECT 'AUTH'||TRIM(TO_CHAR(SUBSTR(MAX(AUTHRT_NO),5)+3,'000')) FROM AUTHRT) ,#{empNo},'AUTH_ADMIN')
+
+        SELECT * FROM DUAL
+	</insert>
+
+<!-- 상위 부서에 속한 부서 목록 가져오기 -->
+	<select id="getUpDeptList" parameterType="empVo" resultType="hashMap">
+		SELECT D.DEPT_NO AS DEPT_NO, D.DEPT_NM AS DEPT_NM
+	     FROM DEPT D
+	    WHERE D.UP_DEPT_NO = ( SELECT P.DEPT_NO
+	                              FROM DEPT C
+	                             INNER JOIN DEPT P ON C.UP_DEPT_NO = P.DEPT_NO
+	                              WHERE C.DEPT_NO = (SELECT DEPT_NO FROM EMP WHERE EMP_NO=#{empNo})
+	                                    )
+	</select>
+
+
+<!-- 해당 부서원의 사원번호 리스트를 가져오기 -->
+	<select id="getDeptEmp" parameterType="String" resultType="srvyTrprVO">
+		SELECT EMP_NO
+		FROM EMP
+		WHERE DEPT_NO = #{deptNo}
+	</select>
+
+<!-- 회원 프로필 사진 수정 -->
+	<update id="updateProfile" parameterType="empVO">
+		UPDATE EMP
+		   SET FILE_GROUP_NO=#{fileGroupNo}
+		WHERE EMP_NO=#{empNo}
+
+	</update>
+	
+	<!-- 파람으로 받은 empNo로 메일주소 가져오기 -->
+	<select id="findEmlAddr" parameterType="string" resultType="string">
+		SELECT EMP_EML_ADDR
+		FROM EMP
+		WHERE EMP_NO=#{empEmlAddr}
+	</select>
+
+</mapper>

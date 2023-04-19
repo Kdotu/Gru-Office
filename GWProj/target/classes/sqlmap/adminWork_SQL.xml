@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--  namespace : xml파일이 여러개일 수 있으므로 이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.AdminWorkMapper">
+
+	<select id="getEmpNo" resultType="empVO">
+		SELECT MAX(EMP_NO)+1 AS EMP_NO FROM EMP
+	</select>
+
+	<!-- 1-1) 직원등록 -->
+	<insert id="insertEmp" parameterType="empVO">
+		INSERT INTO EMP(EMP_NO, JBPS_NO, DEPT_NO, EMP_OGDP_CO, EMP_PSWD, EMP_NM, EMP_RRNO, 
+		EMP_BRDT, EMP_GENDER, EMP_MBL_TELNO, 
+		EMP_CO_TELNO, EMP_EML_ADDR, EMP_ZIP, EMP_ADDR, 
+		EMP_DADDR, EMP_JNCMP_YMD, EMP_HDOF_YN, 
+		EMP_CRT_HOLI)
+		VALUES(#{empNo}, #{jbpsNo}, #{deptNo},'202300', '1234', #{empNm}, #{empRrno}, #{empBrdt}, #{empGender}, #{empMblTelno}, #{empCoTelno}
+		, #{empEmlAddr}, #{empZip} , #{empAddr}, #{empDaddr} , #{empJncmpYmd}, 'HDOF0001', 15 )
+	</insert>
+	
+	<!-- 1-2) 권한등록 -->
+	<insert id="insertAuthrt" parameterType="AuthrtVO">
+		INSERT INTO AUTHRT(AUTHRT_NO, EMP_NO, AUTHRT_NM)
+		VALUES((SELECT 'AUTH'||TRIM(TO_CHAR(SUBSTR(MAX(AUTHRT_NO),5)+1,'000')) FROM AUTHRT), #{empNo}, #{authrtNm})
+	</insert>
+	
+	<select id="getEmpList" resultType="empVO">
+	SELECT EMP_NO, 
+       EMP_NM,
+       DEPT_NM,
+       JBPS_NM, 
+       EMP_JNCMP_YMD
+    FROM EMP A, JBPS B, DEPT C
+    WHERE A.JBPS_NO = B.JBPS_NO 
+    AND A.DEPT_NO = C.DEPT_NO
+    ORDER BY EMP_NO DESC
+	</select>
+	
+	<!-- 관리자페이지 _ 재직/퇴직 선택 여부에 따른 사원 리스트 반환 -->
+	<select id="empSearch" parameterType="empVO" resultType="empVO">
+    SELECT EMP_NO, 
+       EMP_NM,
+       DEPT_NM,
+       JBPS_NM, 
+       TO_CHAR(EMP_JNCMP_YMD,'YYYY-MM-DD') AS EMP_JNCMP_YMDS
+    FROM EMP A, JBPS B, DEPT C
+    WHERE A.JBPS_NO = B.JBPS_NO 
+    AND A.DEPT_NO = C.DEPT_NO
+    AND A.EMP_HDOF_YN = #{empHdofYn}
+    </select>
+    
+    <!-- empVO에 담을 사원정보 -->
+    <resultMap type="empVO" id="empMap">
+		<result property="empNo" column="EMP_NO" /> 
+		<result property="jbpsNo" column="JBPS_NO" />  
+		<result property="deptNm" column="DEPT_NM" /> 
+		<result property="deptNo" column="DEPT_NO" /> 
+		<result property="empNm" column="EMP_NM" />  
+		<result property="empRrno" column="EMP_RRNO" /> 
+		<result property="empBrdt" column="EMP_BRDT" />  
+		<result property="empGender" column="EMP_GENDER" />  
+		<result property="empMblTelno" column="EMP_MBL_TELNO" />  
+		<result property="empEmlAddr" column="EMP_EML_ADDR" />  
+		<result property="empCoTelno" column="EMP_CO_TELNO" />  
+		<result property="empZip" column="EMP_ZIP" />  
+		<result property="empAddr" column="EMP_ADDR" />  
+		<result property="empDaddr" column="EMP_DADDR" />  
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD" />  
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD" />  
+		<result property="empHdofYn" column="EMP_HDOF_YN" />  
+		<collection property="empAuthVOList" resultMap="authMap"></collection>
+	</resultMap>
+    
+    <!-- empVO안에 있는 List<AuthrtVO>에 담을 데이터  -->
+    <resultMap type="AuthrtVO" id="authMap">
+    	<result property="authrtNm" column="AUTHRT_NM" /> 
+    </resultMap>
+    
+    <!-- 관리자페이지_ 사원수정 _ 해당사원의 직원정보 및 권한 정보 resultMap을 통해 한번에 반환 -->
+    <select id="updateEmp" parameterType="empVO" resultMap="empMap">
+    SELECT A.EMP_NO,
+    	A.DEPT_NO,
+       A.JBPS_NO,
+       B.DEPT_NM,
+       A.EMP_NM, 
+       A.EMP_RRNO, 
+       A.EMP_BRDT, 
+       A.EMP_GENDER, 
+       A.EMP_MBL_TELNO, 
+       A.EMP_EML_ADDR, 
+       A.EMP_CO_TELNO, 
+       A.EMP_ZIP, 
+       A.EMP_ADDR, 
+       A.EMP_DADDR,
+       A.EMP_JNCMP_YMD, 
+       A.EMP_RSGNTN_YMD,
+      A.EMP_HDOF_YN,
+      C.AUTHRT_NM
+      FROM EMP A, DEPT B, AUTHRT C WHERE A.DEPT_NO = B.DEPT_NO AND A.EMP_NO = C.EMP_NO AND A.EMP_NO = #{empNo}
+    </select>
+    
+    <update id="updateEmpPost" parameterType="empVO">
+    UPDATE EMP SET 
+	JBPS_NO = #{jbpsNo}, 
+	DEPT_NO = #{deptNo},
+	EMP_NM = #{empNm}, 
+	EMP_RRNO = #{empRrno}, 
+	EMP_BRDT = #{empBrdt},
+	EMP_GENDER = #{empGender}, 
+	EMP_MBL_TELNO = #{empMblTelno},
+	EMP_CO_TELNO = #{empCoTelno}, 
+	EMP_EML_ADDR = #{empEmlAddr}, 
+	EMP_ZIP = #{empZip},
+	EMP_ADDR = #{empAddr}, 
+	EMP_DADDR = #{empDaddr}, 
+	EMP_JNCMP_YMD = #{empJncmpYmd}
+    WHERE EMP_NO = #{empNo}
+    </update>
+    
+    <!-- 권한 수정 시 기존보유 권한 모두 삭제 -->
+    <delete id="deleteAllAuth" parameterType="String">
+    DELETE FROM AUTHRT WHERE EMP_NO = #{empNo}
+    </delete>
+    
+    <!-- 사원 수정 시 퇴직처리 update -->
+    <update id="empExit" parameterType="HashMap">
+    UPDATE EMP SET
+    EMP_HDOF_YN = 'HDOF0002',
+    EMP_RSGNTN_YMD = SYSDATE
+    WHERE EMP_NO = #{empNo}
+    </update>
+    
+    <!-- 사원 수정 시 복구처리 update -->
+    <update id="empRejoin" parameterType="HashMap">
+     UPDATE EMP SET
+	EMP_HDOF_YN = 'HDOF0001',
+	EMP_RSGNTN_YMD = null
+    WHERE EMP_NO = #{empNo}
+    </update>
+    
+    <!-- 전사원 / month 정보 없을 때 전사 근태현황 데이터 반환 -->
+    <select id="getDeptStatis" resultType="workVO">
+    SELECT B.EMP_NM, 
+        C.JBPS_NM,
+        D.DEPT_NM, 
+        TO_CHAR(A.WORK_MNG_REG_YMD,'YYYY-MM-DD (DY)') AS WORK_MNG_REG_YMD, 
+        NVL(TO_CHAR(A.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT, 
+        NVL(TO_CHAR(A.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, 
+        NVL(FN_CD_CHANGE(A.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+	 FROM WORK_MNG A, EMP B, JBPS C, DEPT D 
+	 WHERE A.EMP_NO = B.EMP_NO
+	 AND B.JBPS_NO = C.JBPS_NO
+	 AND B.DEPT_NO = D.DEPT_NO
+	 AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')
+	 ORDER BY  A.WORK_MNG_REG_YMD DESC
+    </select>
+    
+     <!-- 전사원 / 구하고자 하는 달의 전사 근태현황 데이터 반환 -->
+    <select id="getDept2" parameterType="HashMap" resultType="workVO">
+    SELECT B.EMP_NM, 
+         C.JBPS_NM,
+         D.DEPT_NM, 
+         TO_CHAR(A.WORK_MNG_REG_YMD,'YYYY-MM-DD (DY)') AS WORK_MNG_REG_YMD,
+         NVL(TO_CHAR(A.WORK_MNG_BGNG_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_BGNG_DT, 
+         NVL(TO_CHAR(A.WORK_MNG_END_DT, 'HH24:MI:SS'), '00:00:00') WORK_MNG_END_DT, 
+         NVL(FN_CD_CHANGE(A.WORK_MNG_DTL_CN),'-') WORK_MNG_DTL_CN
+	  FROM WORK_MNG A, EMP B, JBPS C, DEPT D 
+	  WHERE A.EMP_NO = B.EMP_NO
+	  AND B.JBPS_NO = C.JBPS_NO
+	  AND B.DEPT_NO = D.DEPT_NO
+	  AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}
+	  ORDER BY  A.WORK_MNG_REG_YMD DESC
+    </select>
+    
+    <!-- 구하고자 하는 달의 부서별 각 근무상태의 갯수 반환 -->
+    <select id="TeamMonthCNT" parameterType="HashMap" resultType="HashMap">
+    SELECT 
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EMPTY
+	FROM DUAL
+    </select>
+    
+    <!-- 현재달의 부서별 각 근무상태의 갯수 반환 -->
+    <select id="TeamMonth" parameterType="HashMap" resultType="HashMap">
+    SELECT 
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = TO_CHAR(SYSDATE,'YYYYMM')) AS EMPTY
+	FROM DUAL
+    </select>
+    
+    <!-- 전사원 인원수 반환 -->
+    <select id="getDeptPerson" resultType="HashMap">
+    SELECT TO_CHAR(COUNT(*)) AS RESULT FROM EMP 
+    </select>
+    
+    <!-- 선택한 부서의 인원수 반환 -->
+    <select id="getDeptPerson2" parameterType="HashMap" resultType="HashMap">
+    SELECT TO_CHAR(COUNT(*)) AS RESULT FROM EMP WHERE DEPT_NO = #{deptNo}
+    </select>
+    
+    <select id="getMonthCNT" parameterType="HashMap" resultType="HashMap">
+    SELECT 
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EMPTY
+	FROM DUAL
+    </select>
+    
+    <!-- 근태관리_ 부서정보 반환(부서장이 부장일 때) -->
+    <select id="getDeptInfo" parameterType="HashMap" resultType="HashMap">
+     SELECT B.DEPT_NM, 
+       A.EMP_NM, 
+       C.JBPS_NM 
+	FROM EMP A, DEPT B, JBPS C 
+	WHERE A.DEPT_NO = B.DEPT_NO 
+	AND A.JBPS_NO = C.JBPS_NO 
+	AND B.DEPT_NO = #{deptNo}  
+	AND C.JBPS_NM = '부장'
+	AND EMP_HDOF_YN = 'HDOF0001'
+    </select>
+    
+    <!-- 재직중인 부서장의 여부 체크  -->
+    <select id="searchCount" resultType="int" parameterType="HashMap" >
+    SELECT COUNT(*) FROM EMP WHERE JBPS_NO = 'JBPS003' AND DEPT_NO = #{deptNo} AND EMP_HDOF_YN = 'HDOF0001'
+    </select>
+    
+    <!-- 근태관리_ 부서정보 반환(부서장이 과장일 때) -->
+    <select id="getDeptInfo2" resultType="HashMap" parameterType="HashMap" >
+    SELECT B.DEPT_NM, 
+       A.EMP_NM, 
+       C.JBPS_NM 
+	FROM EMP A, DEPT B, JBPS C 
+	WHERE A.DEPT_NO = B.DEPT_NO 
+	AND A.JBPS_NO = C.JBPS_NO 
+	AND B.DEPT_NO = #{deptNo}  
+	AND C.JBPS_NM = '과장'
+	AND EMP_HDOF_YN = 'HDOF0001'
+    </select>
+    
+    <!-- 구하고자 하는 달의 각 전사 근무상태 갯수 반환 -->
+    <select id="getAllWorkCount" parameterType="HashMap" resultType="HashMap">
+    SELECT 
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+          
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+          
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+          
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EMPTY
+	FROM DUAL
+    </select>
+    
+    <!-- 구하고자 하는 달의 부서별 각 근무상태 갯수 반환 -->
+    <select id="getDeptWorkCount" parameterType="HashMap" resultType="HashMap" >
+    SELECT D.DEPT_NM,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0002'
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = D.DEPT_NO)
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS LATE,
+    (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0001' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = D.DEPT_NO)
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS NORMAL,
+   (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0003' 
+           AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = D.DEPT_NO)
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS HOLI,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0004' 
+          AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = D.DEPT_NO)
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EARLY,
+  (SELECT COUNT(*) 
+           FROM WORK_MNG 
+           WHERE WORK_MNG_DTL_CN = 'WDTL0005' 
+          AND EMP_NO IN (SELECT EMP_NO FROM EMP WHERE DEPT_NO = D.DEPT_NO)
+           AND SUBSTR(TO_CHAR(work_mng_reg_ymd,'YYYYMMDD'),1,6) = #{month}) AS EMPTY
+	FROM DEPT D
+	WHERE D.UP_DEPT_NO = #{deptNo}
+    </select>
+    
+</mapper>
